@@ -61,8 +61,8 @@ const Dashboard = {
               <div style="font-size:11px;color:var(--color-text2);">随堂练习</div>
             </div>
             <div style="width:1px;height:30px;background:var(--color-border);"></div>
-            <div style="flex:1;font-size:12px;color:var(--color-text2);line-height:1.6;">
-              💡 学习进度来自<strong>知识学习</strong>页的浏览记录和手动标记，已掌握单元则综合了答题正确率。
+            <div style="font-size:12px;color:var(--color-text2);line-height:1.8;word-break:break-all;max-width:100%;">
+              💡 学习进度=知识学习浏览记录+手动标记<br>已掌握=答题正确率≥70%或手动标记完成
             </div>
           </div>
         </div>
@@ -368,10 +368,10 @@ const Dashboard = {
             <div style="padding:12px;background:var(--color-surface2);border-radius:8px;">
               <h4 style="font-size:13px;margin-bottom:8px;">📖 推荐知识点</h4>
               ${highPriority.length > 0 ? highPriority.map(n => `
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer;"
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer;gap:8px;"
                      onclick="window._nav('/learn?node=${n.id}')">
-                  <span style="font-size:13px;">⭐ ${n.name.zh}</span>
-                  <span style="font-size:11px;color:var(--color-primary);">学习 →</span>
+                  <span style="font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">⭐ ${n.name.zh}</span>
+                  <span style="font-size:11px;color:var(--color-primary);white-space:nowrap;flex-shrink:0;">学习→</span>
                 </div>
               `).join('') : '<p style="font-size:12px;color:var(--color-text3);">核心知识点已全部覆盖！</p>'}
             </div>
