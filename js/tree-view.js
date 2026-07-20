@@ -58,30 +58,37 @@ const TreeView = {
   },
 
   afterRender() {
-    this.canvas = document.getElementById('tvCanvas');
-    if (!this.canvas) return;
-    this.ctx = this.canvas.getContext('2d');
+    try {
+      this.canvas = document.getElementById('tvCanvas');
+      if (!this.canvas) return;
+      this.ctx = this.canvas.getContext('2d');
 
-    const resize = () => {
-      const rect = this.canvas.getBoundingClientRect();
-      this.canvas.width = rect.width * devicePixelRatio;
-      this.canvas.height = rect.height * devicePixelRatio;
-      this.ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-      this._layout(rect.width, rect.height);
-      this._draw();
-    };
+      const dpr = window.devicePixelRatio || 1;
+      const resize = () => {
+        try {
+          const rect = this.canvas.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return;
+          this.canvas.width = rect.width * dpr;
+          this.canvas.height = rect.height * dpr;
+          this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          this._layout(rect.width, rect.height);
+          this._draw();
+        } catch(e) { console.warn('TV resize error:', e.message); }
+      };
     resize();
     window.addEventListener('resize', () => setTimeout(resize, 200));
 
-    // Touch/Mouse events
-    this.canvas.addEventListener('touchstart', e => this._onDown(e), { passive: false });
-    this.canvas.addEventListener('touchmove', e => this._onMove(e), { passive: false });
-    this.canvas.addEventListener('touchend', e => this._onUp(e));
-    this.canvas.addEventListener('mousedown', e => this._onDown(e));
-    this.canvas.addEventListener('mousemove', e => this._onMove(e));
-    this.canvas.addEventListener('mouseup', e => this._onUp(e));
-    this.canvas.addEventListener('click', e => this._onClick(e));
-    this.canvas.addEventListener('wheel', e => { e.preventDefault(); this._onZoom(e); }, { passive: false });
+    // Touch/Mouse events (wrapped for safety)
+    const safe = (fn) => (e) => { try { fn.call(this, e); } catch(err) { console.warn('TV event:', err.message); } };
+    try { this.canvas.addEventListener('touchstart', safe(this._onDown), { passive: false }); } catch(e) {}
+    try { this.canvas.addEventListener('touchmove', safe(this._onMove), { passive: false }); } catch(e) {}
+    try { this.canvas.addEventListener('touchend', safe(this._onUp)); } catch(e) {}
+    try { this.canvas.addEventListener('mousedown', safe(this._onDown)); } catch(e) {}
+    try { this.canvas.addEventListener('mousemove', safe(this._onMove)); } catch(e) {}
+    try { this.canvas.addEventListener('mouseup', safe(this._onUp)); } catch(e) {}
+    try { this.canvas.addEventListener('click', safe(this._onClick)); } catch(e) {}
+    try { this.canvas.addEventListener('wheel', (e) => { e.preventDefault(); this._onZoom(e); }, { passive: false }); } catch(e) {}
+    } catch(e) { console.warn('TV init error:', e.message); }
   },
 
   _layout(w, h) {
