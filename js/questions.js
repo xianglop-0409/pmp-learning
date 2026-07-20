@@ -291,6 +291,7 @@ const Questions = {
         </div>
         <div style="padding:0 16px 8px;">
           <button class="btn btn-primary btn-sm" onclick="window._qAdd()" style="width:100%;">+ 添加题目</button>
+          <button class="btn btn-secondary btn-sm" onclick="window._qReloadBank()" style="width:100%;margin-top:6px;">🔄 重新加载题库 (${this.allQuestions.length < 100 ? '当前仅'+this.allQuestions.length+'题，点此加载全部' : '已加载'+this.allQuestions.length+'题'})</button>
         </div>
 
         <!-- 筛选工具栏 -->
@@ -549,6 +550,24 @@ window._qExport = async () => {
   a.click();
   URL.revokeObjectURL(url);
   toast('题库已导出 ✅', 'success');
+};
+
+window._qReloadBank = async () => {
+  const btn = event?.target;
+  if (btn) { btn.textContent = '加载中...'; btn.disabled = true; }
+  try {
+    const resp = await fetch('./data/all-bank.json');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const bank = await resp.json();
+    await db.setSetting('bank_version', '6');
+    await db.customQuestions.clear();
+    await db.customQuestions.bulkPut(bank);
+    toast('已加载 ' + bank.length + ' 道题目!', 'success');
+    setTimeout(() => location.reload(), 500);
+  } catch(e) {
+    toast('加载失败: ' + e.message, 'error');
+    if (btn) { btn.textContent = '重试'; btn.disabled = false; }
+  }
 };
 
 export default Questions;
