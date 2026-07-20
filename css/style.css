@@ -1978,3 +1978,122 @@ tr:hover td {
   margin-bottom: 4px;
   color: var(--color-primary);
 }
+
+/* ===== 移动端样式 ===== */
+@media (max-width: 768px) {
+  /* 隐藏桌面侧边栏和顶部，显示底部Tab */
+  .sidebar { display: none; }
+  .topbar { padding: 0 12px; }
+  .topbar-subtitle { display: none; }
+  .menu-toggle { display: flex; }
+  .bottom-nav { display: flex; }
+
+  /* 主内容全宽 */
+  .main-content {
+    margin-left: 0;
+    margin-bottom: var(--color-bottom-nav-height);
+    padding: 12px;
+    min-height: calc(100vh - var(--color-topbar-height) - var(--color-bottom-nav-height));
+  }
+
+  /* 卡片缩小内边距 */
+  .card { padding: 14px; border-radius: var(--radius-sm); }
+  .card-header { margin-bottom: 10px; padding-bottom: 8px; }
+
+  /* 统计卡片2列 */
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat-card { padding: 14px; }
+  .stat-card .stat-value { font-size: 24px; }
+
+  /* 按钮加大触控 */
+  .btn { padding: 12px 20px; font-size: 15px; min-height: 44px; }
+  .btn-sm { padding: 8px 14px; font-size: 13px; min-height: 36px; }
+
+  /* 知识学习：左侧树隐藏→底部弹窗按钮 */
+  .learn-tree { font-size: 14px; }
+  .learn-article h2 { font-size: 18px; }
+
+  /* 进度环形 */
+  .progress-rings { justify-content: center; gap: 12px; }
+  .ring-item svg { width: 80px; height: 80px; }
+
+  /* 快捷入口 */
+  .quick-actions { grid-template-columns: repeat(2, 1fr); }
+
+  /* 公式卡片网格单列 */
+  .formula-cards-grid { grid-template-columns: 1fr; }
+
+  /* 术语词典单列 */
+  .glossary-cards-grid { grid-template-columns: 1fr; }
+  .glossary-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+
+  /* 练习模式全宽 */
+  .question-card { max-width: 100%; }
+  .option-item { padding: 12px 14px; font-size: 15px; }
+
+  /* 考试答题卡-单列 */
+  .exam-layout { grid-template-columns: 1fr; }
+  .exam-answer-grid { grid-template-columns: repeat(6, 1fr) !important; }
+  .exam-answer-btn { width: 100%; min-height: 32px; font-size: 11px; }
+
+  /* 错题本 */
+  .wrong-item { padding: 10px 12px !important; }
+
+  /* 图谱容器缩小 */
+  .graph-container { height: calc(100vh - 250px); }
+  .graph-sidebar { width: 100%; max-width: 100%; }
+
+  /* Toast适配 */
+  .toast-container { top: 60px; right: 8px; left: 8px; }
+  .toast { max-width: 100%; font-size: 13px; }
+
+  /* 仪表盘快捷入口 */
+  .quick-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .quick-action-btn { padding: 14px 10px; font-size: 13px; }
+  .action-icon { font-size: 20px; }
+
+  /* 进度环缩小 */
+  .ring-item svg { width: 80px !important; height: 80px !important; }
+
+  /* 仪表盘推荐卡片 */
+  .dashboard .card[style*=\"grid-template-columns\"] { grid-template-columns: 1fr !important; }
+
+  /* 错题本/设置页 */
+  .wrong-book-page .stats-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* 移动端侧边栏滑出 */
+  .sidebar.open {
+    display: flex;
+    position: fixed;
+    left: 0;
+    top: var(--color-topbar-height);
+    bottom: 0;
+    width: 260px;
+    z-index: 200;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.3);
+    animation: slideInLeft 0.25s ease;
+  }
+  @keyframes slideInLeft {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+
+  /* 弹窗全宽 */
+  .modal-content { max-width: 95vw !important; max-height: 90vh; }
+}
+
+/* 考试页移动端：题目+答题卡叠放 */
+.exam-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+}
+
+/* 小屏手机 */
+@media (max-width: 400px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stat-card .stat-value { font-size: 20px; }
+  .glossary-card-header { flex-wrap: wrap; }
+  .pmp-abbr-item { grid-template-columns: 50px 1fr; }
+  .pmp-abbr-full { display: none; }
+}
