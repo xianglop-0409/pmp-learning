@@ -521,24 +521,18 @@ const Learn = {
         ` : ''}
 
         <!-- 底部操作栏 -->
-        <div class="learn-actions">
-          <div>
-            ${prevNode ? `<button class="btn btn-secondary btn-sm" onclick="window._learnSelect('${prevNode.id}')">◀ ${prevNode.name.zh}</button>` : ''}
-          </div>
-          <div style="display:flex;gap:8px;">
+        <div class="learn-actions" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          ${prevNode ? `<button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="window._learnSelect('${prevNode.id}')">◀ ${prevNode.name.zh.slice(0,8)}</button>` : '<span></span>'}
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
             ${(() => {
               const isStudied = Learn.progressMap?.[nodeId]?.studied;
               return isStudied
                 ? `<button class="btn btn-studied btn-sm" id="btnMarkStudied" disabled style="background:#22c55e;color:#fff;border-color:#22c55e;">✅ 已学习</button>`
                 : `<button class="btn btn-primary btn-sm" id="btnMarkStudied" onclick="window._learnMark('${nodeId}')">✅ 标记为已学习</button>`;
             })()}
-            <button class="btn btn-secondary btn-sm" onclick="window._nav('/practice?domain=${node.domain || ''}&node=${nodeId}&auto=1')">
-              ✏️ 做相关题目
-            </button>
+            <button class="btn btn-secondary btn-sm" onclick="window._nav('/practice?domain=${node.domain || ''}&node=${nodeId}&auto=1')">✏️ 做题</button>
           </div>
-          <div style="text-align:right;">
-            ${nextNode ? `<button class="btn btn-secondary btn-sm" onclick="window._learnSelect('${nextNode.id}')">${nextNode.name.zh} ▶</button>` : ''}
-          </div>
+          ${nextNode ? `<button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="window._learnSelect('${nextNode.id}')">${nextNode.name.zh.slice(0,8)} ▶</button>` : '<span></span>'}
         </div>
       </article>
     `;
