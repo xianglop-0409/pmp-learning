@@ -1,0 +1,21 @@
+{
+  "name": "PMP 联动学习机",
+  "short_name": "PMP学习",
+  "description": "PMBOK第8版 · 知识图谱 × 情景应用题 联动学习",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f0f1a",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    {
+      "src": "img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

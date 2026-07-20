@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PMP知识图谱 × 情景应用题 联动学习机 — PMBOK第8版">
+  <meta name="theme-color" content="#f0f4f8">
+  <title>PMP 联动学习机 | PMBOK 第8版</title>
+
+  <!-- CDN 按需动态加载，不阻塞页面 -->
+  <!-- D3.js: 知识图谱页面需要 -->
+  <!-- Dexie.js: 数据存储，全应用需要 -->
+  <!-- Chart.js: 学习报告页面需要 -->
+
+  <!-- 立即设置亮色主题，避免闪烁 -->
+  <script>
+    document.documentElement.setAttribute('data-theme', 'light');
+  </script>
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <!-- ===== 顶部导航 ===== -->
+  <header class="topbar" id="topbar">
+    <button class="menu-toggle" id="menuToggle" aria-label="菜单">
+      <span></span><span></span><span></span>
+    </button>
+    <h1 class="app-title">PMP 联动学习机</h1>
+    <span class="topbar-subtitle">PMBOK® 第8版</span>
+  </header>
+
+  <!-- ===== 侧边栏导航（桌面端） ===== -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">📚</span>
+      <span class="brand-text">PMP 学习机</span>
+    </div>
+    <ul class="nav-list">
+      <li><a href="#/dashboard" class="nav-item" data-route="/dashboard">
+        <span class="nav-icon">📊</span>仪表盘
+      </a></li>
+      <li><a href="#/learn" class="nav-item" data-route="/learn">
+        <span class="nav-icon">📖</span>知识学习
+      </a></li>
+      <li><a href="#/graph" class="nav-item" data-route="/graph">
+        <span class="nav-icon">🕸️</span>知识图谱
+      </a></li>
+      <li><a href="#/questions" class="nav-item" data-route="/questions">
+        <span class="nav-icon">📝</span>题库管理
+      </a></li>
+      <li><a href="#/practice" class="nav-item" data-route="/practice">
+        <span class="nav-icon">✏️</span>练习模式
+      </a></li>
+      <li><a href="#/exam" class="nav-item" data-route="/exam">
+        <span class="nav-icon">🏆</span>模拟考试
+      </a></li>
+      <li><a href="#/analytics" class="nav-item" data-route="/analytics">
+        <span class="nav-icon">📈</span>学习报告
+      </a></li>
+      <li class="nav-section-title">学习工具</li>
+      <li><a href="#/wrong-book" class="nav-item" data-route="/wrong-book">
+        <span class="nav-icon">❌</span>错题本
+      </a></li>
+      <li><a href="#/glossary" class="nav-item" data-route="/glossary">
+        <span class="nav-icon">📖</span>术语词典
+      </a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <span class="version">v1.0 · PMBOK 8th</span>
+    </div>
+  </nav>
+
+  <!-- ===== 底部Tab导航（手机端） ===== -->
+  <nav class="bottom-nav" id="bottomNav">
+    <a href="#/dashboard" class="tab-item" data-route="/dashboard">
+      <span class="tab-icon">📊</span><span class="tab-label">仪表盘</span>
+    </a>
+    <a href="#/learn" class="tab-item" data-route="/learn">
+      <span class="tab-icon">📖</span><span class="tab-label">学习</span>
+    </a>
+    <a href="#/graph" class="tab-item" data-route="/graph">
+      <span class="tab-icon">🕸️</span><span class="tab-label">图谱</span>
+    </a>
+    <a href="#/practice" class="tab-item" data-route="/practice">
+      <span class="tab-icon">✏️</span><span class="tab-label">练习</span>
+    </a>
+    <a href="#/exam" class="tab-item" data-route="/exam">
+      <span class="tab-icon">🏆</span><span class="tab-label">考试</span>
+    </a>
+    <a href="#/questions" class="tab-item" data-route="/questions">
+      <span class="tab-icon">📝</span><span class="tab-label">题库</span>
+    </a>
+    <a href="#/wrong-book" class="tab-item" data-route="/wrong-book">
+      <span class="tab-icon">❌</span><span class="tab-label">错题</span>
+    </a>
+    <a href="#/glossary" class="tab-item" data-route="/glossary">
+      <span class="tab-icon">📖</span><span class="tab-label">术语</span>
+    </a>
+  </nav>
+
+  <!-- ===== 主内容区 ===== -->
+  <main class="main-content" id="mainContent">
+    <div class="page-loading" id="pageLoading">
+      <div class="spinner"></div>
+      <p>加载中...</p>
+      <p style="font-size:12px;color:var(--color-text3);margin-top:8px;">正在加载本地资源...</p>
+    </div>
+  </main>
+
+
+  <!-- ===== Toast 容器 ===== -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ===== 模态窗容器 ===== -->
+  <div class="modal-overlay" id="modalOverlay" style="display:none;">
+    <div class="modal-content" id="modalContent"></div>
+  </div>
+
+  <!-- ===== App Scripts ===== -->
+  <script type="module" src="js/app.js?v=3"></script>
+</body>
+</html>
