@@ -40,17 +40,20 @@ class Database {
       await this.setSetting('preset_questions_loaded', '1');
     }
 
-    // 导入外部题库（清洗后2800题）
-    const bankLoaded = await this.getSetting('bank_v5_clean');
-    if (!bankLoaded) {
-      console.log('Importing cleaned question bank (2800 questions)...');
+    // 导入外部题库（清洗后2694题，每次版本升级自动重导）
+    const bankVersion = 6;
+    const bankLoaded = await this.getSetting('bank_version');
+    if (parseInt(bankLoaded || '0') < bankVersion) {
+      console.log('Importing cleaned question bank...');
       try {
         const resp = await fetch('./data/all-bank.json');
         if (resp.ok) {
           const bank = await resp.json();
+          // 清空旧题再导入
+          await this.db.customQuestions.clear();
           await this.db.customQuestions.bulkPut(bank);
-          await this.setSetting('bank_v5_clean', '1');
-          console.log('✅ Imported ' + bank.length + ' questions');
+          await this.setSetting('bank_version', String(bankVersion));
+          console.log('Imported ' + bank.length + ' questions (v' + bankVersion + ')');
         }
       } catch (e) {
         console.warn('Bank import failed:', e.message);
