@@ -75,19 +75,19 @@ const TreeView = {
           this._draw();
         } catch(e) { console.warn('TV resize error:', e.message); }
       };
+    const self = TreeView;
     resize();
     window.addEventListener('resize', () => setTimeout(resize, 200));
 
-    // Touch/Mouse events (wrapped for safety)
-    const safe = (fn) => (e) => { try { fn.call(this, e); } catch(err) { console.warn('TV event:', err.message); } };
-    try { this.canvas.addEventListener('touchstart', safe(this._onDown), { passive: false }); } catch(e) {}
-    try { this.canvas.addEventListener('touchmove', safe(this._onMove), { passive: false }); } catch(e) {}
-    try { this.canvas.addEventListener('touchend', safe(this._onUp)); } catch(e) {}
-    try { this.canvas.addEventListener('mousedown', safe(this._onDown)); } catch(e) {}
-    try { this.canvas.addEventListener('mousemove', safe(this._onMove)); } catch(e) {}
-    try { this.canvas.addEventListener('mouseup', safe(this._onUp)); } catch(e) {}
-    try { this.canvas.addEventListener('click', safe(this._onClick)); } catch(e) {}
-    try { this.canvas.addEventListener('wheel', (e) => { e.preventDefault(); this._onZoom(e); }, { passive: false }); } catch(e) {}
+    // Touch/Mouse events - use self (TreeView object) for stable 'this' reference
+    this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); self._onDown(e); }, { passive: false });
+    this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); self._onMove(e); }, { passive: false });
+    this.canvas.addEventListener('touchend', (e) => { self._onUp(e); });
+    this.canvas.addEventListener('mousedown', (e) => { self._onDown(e); });
+    this.canvas.addEventListener('mousemove', (e) => { self._onMove(e); });
+    this.canvas.addEventListener('mouseup', (e) => { self._onUp(e); });
+    this.canvas.addEventListener('click', (e) => { self._onClick(e); });
+    this.canvas.addEventListener('wheel', (e) => { e.preventDefault(); self._onZoom(e); }, { passive: false });
     } catch(e) { console.warn('TV init error:', e.message); }
   },
 
