@@ -56,27 +56,31 @@ const Practice = {
               敏捷
             </button>
           </div>
-          <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap;">
-            <span style="font-size:12px;color:var(--color-text2);">难度：</span>
-            ${[1,2,3,4,5].map(d => `
-              <button class="tag tag-gray diff-tag" data-diff="${d}" onclick="this.classList.toggle('tag-green');this.classList.toggle('tag-gray');" style="cursor:pointer;">
-                ${'⭐'.repeat(d)}
-              </button>
-            `).join('')}
-            <span style="font-size:12px;color:var(--color-text2);margin-left:8px;">状态：</span>
-            <select id="pStatusFilter" style="padding:4px 8px;border-radius:4px;border:1px solid var(--color-border);font-size:12px;">
-              <option value="all">全部题目</option>
-              <option value="unattempted">未做过</option>
-              <option value="starred">已标记 ⭐</option>
-              <option value="wrong">曾答错</option>
-            </select>
-            <span style="font-size:12px;color:var(--color-text2);">题数：</span>
-            <select id="pCountFilter" style="padding:4px 8px;border-radius:4px;border:1px solid var(--color-border);font-size:12px;">
-              <option value="20">20题</option>
-              <option value="50">50题</option>
-              <option value="100">100题</option>
-              <option value="0">全部</option>
-            </select>
+          <div style="margin-top:10px;">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow-x:auto;">
+              <span style="font-size:12px;color:var(--color-text2);white-space:nowrap;">难度：</span>
+              ${[1,2,3,4,5].map(d => `
+                <button class="tag tag-gray diff-tag" data-diff="${d}" onclick="this.classList.toggle('tag-green');this.classList.toggle('tag-gray');" style="cursor:pointer;flex-shrink:0;">
+                  ${'⭐'.repeat(d)}
+                </button>
+              `).join('')}
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <span style="font-size:12px;color:var(--color-text2);white-space:nowrap;">状态：</span>
+              <select id="pStatusFilter" style="flex:1;padding:4px 8px;border-radius:4px;border:1px solid var(--color-border);font-size:12px;">
+                <option value="all">全部题目</option>
+                <option value="unattempted">未做过</option>
+                <option value="starred">已标记</option>
+                <option value="wrong">曾答错</option>
+              </select>
+              <span style="font-size:12px;color:var(--color-text2);white-space:nowrap;">题数：</span>
+              <select id="pCountFilter" style="width:70px;padding:4px 8px;border-radius:4px;border:1px solid var(--color-border);font-size:12px;">
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="0">全部</option>
+              </select>
+            </div>
           </div>
           <div style="flex:1;"></div>
           <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="window._pStart()">开始练习</button>
@@ -390,8 +394,27 @@ const Practice = {
       bus.emit('milestone:reached', { type: 'practice_10', rate });
     }
 
-    // 重绘题目（显示对错和解析）
+    // 自动跳下一题（1.5s后）
+    const autoJump = setTimeout(() => {
+      if (this.isSubmitted && this.currentIndex < this.questions.length) {
+        this.currentIndex++;
+        if (this.currentIndex >= this.questions.length) {
+          this._showResult();
+        } else {
+          this._renderQuestion();
+        }
+      }
+    }, 1500);
+
+    // 重绘题目（显示对错和解析），同时保留手动下一题按钮
     this._renderQuestion();
+
+    // 如果用户在自动跳转前手动点击了下一题，取消自动跳转
+    const origNext = this.nextQuestion;
+    this.nextQuestion = () => {
+      clearTimeout(autoJump);
+      origNext.call(this);
+    };
   },
 
   // 下一题
