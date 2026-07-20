@@ -385,9 +385,6 @@ const Dashboard = {
       return '';
     }
   },
-      </div>
-    `;
-  },
 
   _calcOverallProgress(domainProgress) {
     const total = domainProgress.reduce((s, d) => s + d.total, 0);
