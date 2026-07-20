@@ -123,6 +123,15 @@
   </div>
 
   <!-- ===== App Scripts ===== -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').then(() => {
+        console.log('[PWA] Service Worker registered');
+      }).catch(err => {
+        console.warn('[PWA] SW registration failed:', err);
+      });
+    }
+  </script>
   <script type="module" src="js/app.js?v=20260720"></script>
 </body>
 </html>
