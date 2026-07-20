@@ -113,7 +113,7 @@ const Exam = {
         <span style="font-size:12px;color:var(--color-text2);">已答 ${answeredCount} | 标记 ${this.flagged.size}</span>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;">
+      <div class="exam-layout">
         <!-- 题目区 -->
         <div>
           <div class="card">
