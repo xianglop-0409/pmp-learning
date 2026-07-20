@@ -37,9 +37,13 @@ const Learn = {
       }
     }
 
+    // 移动端检测
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
     return `
-      <div style="display:grid;grid-template-columns:280px 1fr;gap:20px;height:calc(100vh - var(--color-topbar-height) - 60px);">
-        <!-- 左侧知识树 -->
+      <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '280px 1fr'};gap:20px;height:calc(100vh - var(--color-topbar-height) - ${isMobile ? '110px' : '60px'});">
+        ${!isMobile ? `
+        <!-- 左侧知识树（桌面端） -->
         <div class="card" style="overflow-y:auto;">
           <div style="padding:12px 0;border-bottom:1px solid var(--color-border);margin-bottom:8px;">
             <h3 style="font-size:15px;">📚 知识目录</h3>
@@ -51,73 +55,75 @@ const Learn = {
               const studied = allProgress.filter(p => p.studied).length;
               return `
                 <div style="display:flex;gap:12px;margin-top:6px;font-size:11px;">
-                  <span style="color:#6366f1;">👁️ 已浏览 ${viewed}</span>
-                  <span style="color:#22c55e;">✅ 已学习 ${studied}</span>
+                  <span style="color:#6366f1;">已浏览 ${viewed}</span>
+                  <span style="color:#22c55e;">已学习 ${studied}</span>
                 </div>
               `;
             })()}
           </div>
+          ${this._renderTree(principles, domains, focusAreas, agileConcepts, progressMap)}
+        </div>
+        ` : ''}
 
-          <div class="learn-tree">
-            <!-- 原则 -->
-            <div class="learn-section">
-              <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
-                <span>💡 项目管理原则</span>
-                <span class="learn-count">${principles.length}</span>
-              </div>
-              <div class="learn-section-body">
-                ${principles.map(p => this._treeItem(p, progressMap)).join('')}
-              </div>
+        <!-- 阅读面板 -->
+        <div class="card" style="overflow-y:auto;" id="learnContent">
+          ${isMobile ? `
+            <!-- 手机端顶部导航条 -->
+            <div id="learnMobileBar" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--color-border);">
+              <button class="btn btn-sm btn-secondary" onclick="document.getElementById('learnTreeOverlay').style.display='flex'" style="min-height:36px;">📚 目录</button>
+              <span style="font-size:13px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="learnMobileTitle"></span>
+              <span style="font-size:12px;color:var(--color-text3);">${getTotalKnowledgeUnits().independent}个</span>
             </div>
+            <!-- 左侧树浮层 -->
+            <div id="learnTreeOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:flex-start;">
+              <div style="background:var(--color-surface);width:85vw;max-width:320px;height:100vh;overflow-y:auto;padding:16px;box-shadow:2px 0 12px rgba(0,0,0,0.3);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                  <strong>📚 知识目录</strong>
+                  <button class="btn btn-sm btn-secondary" onclick="document.getElementById('learnTreeOverlay').style.display='none'">✕ 关闭</button>
+                </div>
+                ${this._renderTree(principles, domains, focusAreas, agileConcepts, progressMap)}
+              </div>
+              <div style="flex:1;" onclick="document.getElementById('learnTreeOverlay').style.display='none'"></div>
+            </div>
+          ` : ''}
+          ${this._renderContent(this.currentNodeId)}
+        </div>
+      </div>
+    `;
+  },
 
-            <!-- 绩效域（含过程） -->
-            <div class="learn-section">
-              <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
-                <span>📂 绩效域</span>
-                <span class="learn-count">${domains.length}域</span>
-              </div>
-              <div class="learn-section-body">
-                ${domains.map(d => {
-                  const processes = getChildren(d.id);
-                  return `
-                    <div class="learn-group">
-                      ${this._treeItem(d, progressMap, true)}
-                      <div class="learn-group-children">
-                        ${processes.map(p => this._treeItem(p, progressMap)).join('')}
-                      </div>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            </div>
-
-            <!-- 关注领域 -->
-            <div class="learn-section">
-              <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
-                <span>🎯 关注领域</span>
-                <span class="learn-count">${focusAreas.length}</span>
-              </div>
-              <div class="learn-section-body">
-                ${focusAreas.map(f => this._treeItem(f, progressMap)).join('')}
-              </div>
-            </div>
-
-            <!-- 敏捷 -->
-            <div class="learn-section">
-              <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
-                <span>🔄 敏捷概念</span>
-                <span class="learn-count">${agileConcepts.length}</span>
-              </div>
-              <div class="learn-section-body">
-                ${agileConcepts.map(a => this._treeItem(a, progressMap)).join('')}
-              </div>
-            </div>
+  /** 抽取知识树渲染 */
+  _renderTree(principles, domains, focusAreas, agileConcepts, progressMap) {
+    return `
+      <div class="learn-tree">
+        <div class="learn-section">
+          <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>💡 项目管理原则</span><span class="learn-count">${principles.length}</span>
+          </div>
+          <div class="learn-section-body">${principles.map(p => this._treeItem(p, progressMap)).join('')}</div>
+        </div>
+        <div class="learn-section">
+          <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>📂 绩效域</span><span class="learn-count">${domains.length}域</span>
+          </div>
+          <div class="learn-section-body">
+            ${domains.map(d => {
+              const processes = getChildren(d.id);
+              return `<div class="learn-group">${this._treeItem(d, progressMap, true)}<div class="learn-group-children">${processes.map(p => this._treeItem(p, progressMap)).join('')}</div></div>`;
+            }).join('')}
           </div>
         </div>
-
-        <!-- 右侧阅读面板 -->
-        <div class="card" style="overflow-y:auto;" id="learnContent">
-          ${this._renderContent(this.currentNodeId)}
+        <div class="learn-section">
+          <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>🎯 关注领域</span><span class="learn-count">${focusAreas.length}</span>
+          </div>
+          <div class="learn-section-body">${focusAreas.map(f => this._treeItem(f, progressMap)).join('')}</div>
+        </div>
+        <div class="learn-section">
+          <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>🔄 敏捷概念</span><span class="learn-count">${agileConcepts.length}</span>
+          </div>
+          <div class="learn-section-body">${agileConcepts.map(a => this._treeItem(a, progressMap)).join('')}</div>
         </div>
       </div>
     `;
@@ -545,15 +551,20 @@ const Learn = {
     if (content) {
       content.innerHTML = this._renderContent(nodeId);
     }
-    // 更新左侧树的高亮
+    // 更新树高亮
     document.querySelectorAll('.learn-tree-item').forEach(el => {
       el.classList.toggle('active', el.dataset.nodeId === nodeId);
     });
+    // 手机端：关闭浮层，更新标题
+    const overlay = document.getElementById('learnTreeOverlay');
+    if (overlay) overlay.style.display = 'none';
+    const title = document.getElementById('learnMobileTitle');
+    if (title) {
+      const node = getNodeById(nodeId);
+      if (node) title.textContent = node.name.zh;
+    }
 
-    // 自动记录学习行为（查看即记录）
     await this._autoTrackView(nodeId);
-
-    // 加载关联题目
     this._loadQuickCheck(nodeId);
   },
 
