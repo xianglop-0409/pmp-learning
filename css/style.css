@@ -2042,6 +2042,7 @@ tr:hover td {
   /* 图谱容器缩小 */
   .graph-container { height: calc(100vh - 250px); }
   .graph-sidebar { width: 100%; max-width: 100%; }
+  #tvCanvas { touch-action: manipulation; }
 
   /* Toast适配 */
   .toast-container { top: 60px; right: 8px; left: 8px; }
