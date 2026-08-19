@@ -113,7 +113,7 @@ const Exam = {
         <span style="font-size:12px;color:var(--color-text2);">已答 ${answeredCount} | 标记 ${this.flagged.size}</span>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;">
+      <div class="exam-layout">
         <!-- 题目区 -->
         <div>
           <div class="card">
@@ -206,18 +206,12 @@ const Exam = {
     if (this.isFinished) return;
 
     const unanswered = this.questions.length - Object.keys(this.answers).length;
-    if (unanswered > 0) {
-      const ok = await new Promise(resolve => {
-        const { confirm: c } = window;
-        if (typeof confirm === 'function') {
-          c(`还有${unanswered}道题未作答，确定要交卷吗？未答题目将被记为错误。`);
-        } else {
-          resolve(confirm(`还有${unanswered}道题未作答，确定要交卷吗？`));
-        }
-        resolve(true); // 简化处理，直接允许
-      });
-      // 直接处理
-    }
+    const cmsg = unanswered > 0
+      ? `⚠️ 还有 ${unanswered} 道题未作答！\n\n未答题目将被记为错误，确定要交卷吗？`
+      : `确定要交卷吗？提交后无法修改答案。`;
+
+    const ok = confirm(cmsg);
+    if (!ok) return;
 
     this.isFinished = true;
     clearInterval(this.timerInterval);
@@ -320,7 +314,14 @@ const Exam = {
       const timerEl = document.getElementById('examTimer');
       if (timerEl) {
         timerEl.textContent = this._formatTime(this.timeLeft);
-        timerEl.style.color = this.timeLeft < 600 ? 'var(--color-danger)' : this.timeLeft < 1800 ? 'var(--color-warning)' : '';
+        // 时间不足警告：<5分钟 红色闪烁，<10分钟 橙色
+        if (this.timeLeft < 300) {
+          timerEl.style.color = 'var(--color-danger)';
+          timerEl.style.fontWeight = '700';
+        } else if (this.timeLeft < 600) {
+          timerEl.style.color = 'var(--color-warning)';
+          timerEl.style.fontWeight = '600';
+        }
       }
       if (this.timeLeft <= 0) {
         this.submit();

@@ -1,7 +1,7 @@
 // ===== 知识学习页面 — 系统阅读教材内容 =====
 
 import { getHierarchy, getNodeById, getChildren, getRelatedNodes, getTotalKnowledgeUnits } from "./knowledge-graph.js";
-import KNOWLEDGE_CONTENT from "./knowledge-content.js";
+import KNOWLEDGE_CONTENT from "./knowledge-content.js?v=9";
 import db from "./db.js";
 import router from "./router.js";
 import bus from "./event-bus.js";
@@ -37,9 +37,16 @@ const Learn = {
       }
     }
 
+    // 移动端检测
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+    // 渲染完成后初始化侧边竖向进度条（DOM 由 router 插入后执行）
+    setTimeout(() => this._initScrollProgress(), 300);
+
     return `
-      <div style="display:grid;grid-template-columns:280px 1fr;gap:20px;height:calc(100vh - var(--color-topbar-height) - 60px);">
-        <!-- 左侧知识树 -->
+      <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '280px 1fr'};gap:20px;height:calc(100vh - var(--color-topbar-height) - ${isMobile ? '110px' : '60px'});">
+        ${!isMobile ? `
+        <!-- 左侧知识树（桌面端） -->
         <div class="card" style="overflow-y:auto;">
           <div style="padding:12px 0;border-bottom:1px solid var(--color-border);margin-bottom:8px;">
             <h3 style="font-size:15px;">📚 知识目录</h3>
@@ -51,73 +58,88 @@ const Learn = {
               const studied = allProgress.filter(p => p.studied).length;
               return `
                 <div style="display:flex;gap:12px;margin-top:6px;font-size:11px;">
-                  <span style="color:#6366f1;">👁️ 已浏览 ${viewed}</span>
-                  <span style="color:#22c55e;">✅ 已学习 ${studied}</span>
+                  <span style="color:#6366f1;">已浏览 ${viewed}</span>
+                  <span style="color:#22c55e;">已学习 ${studied}</span>
                 </div>
               `;
             })()}
           </div>
+          ${this._renderTree(principles, domains, focusAreas, agileConcepts, progressMap)}
+        </div>
+        ` : ''}
 
-          <div class="learn-tree">
-            <!-- 原则 -->
-            <div class="learn-section">
-              <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
-                <span>💡 项目管理原则</span>
-                <span class="learn-count">${principles.length}</span>
-              </div>
-              <div class="learn-section-body">
-                ${principles.map(p => this._treeItem(p, progressMap)).join('')}
-              </div>
+        <!-- 阅读面板（含侧边竖向阅读进度条） -->
+        <div style="position:relative;min-width:0;display:flex;flex-direction:column;">
+        <div class="card" style="overflow-y:auto;flex:1;height:100%;" id="learnContent">
+          ${isMobile ? `
+            <!-- 手机端顶部导航条 -->
+            <div id="learnMobileBar" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--color-border);">
+              <button class="btn btn-sm btn-secondary" onclick="document.getElementById('learnTreeOverlay').style.display='flex'" style="min-height:36px;">📚 目录</button>
+              <span style="font-size:13px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="learnMobileTitle"></span>
+              <span style="font-size:12px;color:var(--color-text3);">${getTotalKnowledgeUnits().independent}个</span>
             </div>
+            <!-- 左侧树浮层 -->
+            <div id="learnTreeOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:flex-start;">
+              <div style="background:var(--color-surface);width:85vw;max-width:320px;height:100vh;overflow-y:auto;padding:16px;box-shadow:2px 0 12px rgba(0,0,0,0.3);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                  <strong>📚 知识目录</strong>
+                  <button class="btn btn-sm btn-secondary" onclick="document.getElementById('learnTreeOverlay').style.display='none'">✕ 关闭</button>
+                </div>
+                ${this._renderTree(principles, domains, focusAreas, agileConcepts, progressMap)}
+              </div>
+              <div style="flex:1;" onclick="document.getElementById('learnTreeOverlay').style.display='none'"></div>
+            </div>
+          ` : ''}
+          ${this._renderContent(this.currentNodeId)}
+        </div>
+        <!-- 侧边竖向阅读进度条 -->
+        <div class="learn-scroll-track" id="learnScrollTrack">
+          <div class="learn-scroll-fill" id="learnScrollFill"></div>
+        </div>
+        </div>
+      </div>
+    `;
+  },
 
-            <!-- 绩效域（含过程） -->
-            <div class="learn-section">
-              <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
-                <span>📂 绩效域</span>
-                <span class="learn-count">${domains.length}域</span>
-              </div>
-              <div class="learn-section-body">
-                ${domains.map(d => {
-                  const processes = getChildren(d.id);
-                  return `
-                    <div class="learn-group">
-                      ${this._treeItem(d, progressMap, true)}
-                      <div class="learn-group-children">
-                        ${processes.map(p => this._treeItem(p, progressMap)).join('')}
-                      </div>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            </div>
-
-            <!-- 关注领域 -->
-            <div class="learn-section">
-              <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
-                <span>🎯 关注领域</span>
-                <span class="learn-count">${focusAreas.length}</span>
-              </div>
-              <div class="learn-section-body">
-                ${focusAreas.map(f => this._treeItem(f, progressMap)).join('')}
-              </div>
-            </div>
-
-            <!-- 敏捷 -->
-            <div class="learn-section">
-              <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
-                <span>🔄 敏捷概念</span>
-                <span class="learn-count">${agileConcepts.length}</span>
-              </div>
-              <div class="learn-section-body">
-                ${agileConcepts.map(a => this._treeItem(a, progressMap)).join('')}
-              </div>
-            </div>
+  /** 抽取知识树渲染 */
+  _renderTree(principles, domains, focusAreas, agileConcepts, progressMap, isMobile = false) {
+    const searchBox = isMobile ? '' : `
+      <div style="padding:6px 0 8px;">
+        <input id="learnTreeSearch" type="text" placeholder="🔍 搜索知识点..." oninput="window._searchTree(this.value)"
+          style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--color-border);font-size:12px;outline:none;">
+      </div>
+    `;
+    return `
+      <div class="learn-tree">
+        ${searchBox}
+        <div class="learn-section">
+          <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>💡 项目管理原则</span><span class="learn-count">${principles.length}</span>
+          </div>
+          <div class="learn-section-body">${principles.map(p => this._treeItem(p, progressMap)).join('')}</div>
+        </div>
+        <div class="learn-section">
+          <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>📂 绩效域</span><span class="learn-count">${domains.length}域</span>
+          </div>
+          <div class="learn-section-body">
+            ${domains.map(d => {
+              const processes = getChildren(d.id);
+              return `<div class="learn-group">${this._treeItem(d, progressMap, true)}<div class="learn-group-children">${processes.map(p => this._treeItem(p, progressMap)).join('')}</div></div>`;
+            }).join('')}
           </div>
         </div>
-
-        <!-- 右侧阅读面板 -->
-        <div class="card" style="overflow-y:auto;" id="learnContent">
-          ${this._renderContent(this.currentNodeId)}
+        <div class="learn-section">
+          <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>🎯 关注领域</span><span class="learn-count">${focusAreas.length}</span>
+          </div>
+          <div class="learn-section-body">${focusAreas.map(f => this._treeItem(f, progressMap)).join('')}</div>
+        </div>
+        <div class="learn-section">
+          <div class="learn-section-title" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>🔄 敏捷概念</span><span class="learn-count">${agileConcepts.length}</span>
+          </div>
+          <div class="learn-section-body">${agileConcepts.map(a => this._treeItem(a, progressMap)).join('')}</div>
         </div>
       </div>
     `;
@@ -164,8 +186,10 @@ const Learn = {
 
     // 步骤1: 每个段落独立处理
     let resultParts = rawParas.map(raw => {
-      // 段落内单换行 → <br>
-      let html = raw.trim().replace(/\n/g, '<br>');
+      // 段落内单换行 → <br>；每行去掉 markdown 列表前缀「- 」/「• 」
+      let html = raw.split('\n').map(line =>
+        line.trim().replace(/^[-•●]\s+/, '')
+      ).join('<br>');
       return html;
     });
 
@@ -192,6 +216,9 @@ const Learn = {
       return `\x00TAG${protectedTags.length - 1}\x00`;
     });
 
+    // markdown 加粗 **text** → 加粗标记（先于关键词加粗）
+    html = html.replace(/\*\*([^*\n]+)\*\*/g, '\x00B\x00$1\x00/B\x00');
+
     // 在纯文本中执行加粗
     autoBold.forEach(term => {
       html = html.replace(new RegExp(term, 'g'), m => `\x00B\x00${m}\x00/B\x00`);
@@ -214,6 +241,8 @@ const Learn = {
     const finalParas = html.split(/<br><br>/).filter(p => p.trim());
     html = finalParas.map(p => {
       p = p.trim().replace(/^<br>|<br>$/g, '');
+      // 去掉 markdown 列表前缀「- 」/「• 」，避免与 bullet 重复
+      p = p.replace(/^[-•●]\s+/, '');
       if (!p) return '';
       // 每个段落前加 bullet point
       return '<p class="learn-p"><span class="learn-bullet">●</span>' + p + '</p>';
@@ -222,9 +251,42 @@ const Learn = {
     return html;
   },
 
+  /** 计算知识点掌握度（基于数据库真实进度） */
+  _calcMastery(progress) {
+    const studied = progress?.studied === true;
+    const rate = progress?.correctRate;
+    const attempts = progress?.attempts || 0;
+    const correct = progress?.correct || 0;
+
+    // 已掌握：答题正确率 >= 70%
+    if (typeof rate === 'number' && rate >= 70) {
+      return { label: '已掌握', color: '#22c55e', detail: `答题正确率 ${rate}%` };
+    }
+    // 已学习（手动标记）：没答过题或正确率不足，但已标记完成
+    if (studied) {
+      if (typeof rate === 'number' && rate > 0) {
+        return { label: '已学习', color: '#6366f1', detail: `正确率 ${rate}%（${attempts}题）` };
+      }
+      return { label: '已学习', color: '#6366f1', detail: '已标记完成，建议做题巩固' };
+    }
+    // 学习中 / 薄弱：做过题但未达标
+    if (attempts > 0) {
+      if (typeof rate === 'number' && rate >= 30) {
+        return { label: '学习中', color: '#f59e0b', detail: `正确率 ${rate}%（${correct}/${attempts}）` };
+      }
+      return { label: '薄弱', color: '#ef4444', detail: `正确率 ${rate ?? 0}%（${correct}/${attempts}）` };
+    }
+    // 未开始
+    return { label: '未开始', color: '#9ca3af', detail: '' };
+  },
+
   _renderContent(nodeId) {
     const node = getNodeById(nodeId);
     if (!node) return '<div class="empty-state"><p>请从左侧选择知识点</p></div>';
+
+    // 读取真实学习进度（数据库），而非静态节点数据
+    const progress = this.progressMap[nodeId] || {};
+    const mastery = this._calcMastery(progress);
 
     const typeLabels = {
       principle: { label: '项目管理原则', icon: '💡', color: '#f59e0b' },
@@ -282,11 +344,14 @@ const Learn = {
         ${node.type === 'process' || node.type === 'agile_concept' ? `
           <div class="learn-progress-mini" id="learnProgress">
             <span style="font-size:12px;color:var(--color-text2);">📊 本知识点掌握度：</span>
-            <span style="font-weight:700;color:${progressColor(node.correctRate || 0)};" id="learnProgressLabel">
-              ${progressLabel(node.correctRate)}
+            <span style="font-weight:700;color:${mastery.color};" id="learnProgressLabel">
+              ${mastery.label}
             </span>
+            ${mastery.detail ? `<span style="font-size:11px;color:var(--color-text3);margin-left:6px;">${mastery.detail}</span>` : ''}
           </div>
         ` : ''}
+
+        <!-- 侧边竖向进度条由 learnScrollFill 驱动，无顶部横向条 -->
 
         <!-- 概述区 -->
         ${fullDesc ? `
@@ -365,8 +430,8 @@ const Learn = {
         <!-- details 附加区块（嵌套对象） -->
         ${Object.entries(details).map(([title, text]) => `
         <div class="learn-section-block">
-          <h4>📌 ${title}</h4>
-          <div class="learn-body-text">${(text||'').replace(/\n/g, '<br>')}</div>
+          <h4>${title}</h4>
+          <div class="learn-body-text">${this._formatText(text)}</div>
         </div>
         `).join('')}
 
@@ -515,24 +580,18 @@ const Learn = {
         ` : ''}
 
         <!-- 底部操作栏 -->
-        <div class="learn-actions">
-          <div>
-            ${prevNode ? `<button class="btn btn-secondary btn-sm" onclick="window._learnSelect('${prevNode.id}')">◀ ${prevNode.name.zh}</button>` : ''}
-          </div>
-          <div style="display:flex;gap:8px;">
+        <div class="learn-actions" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          ${prevNode ? `<button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="window._learnSelect('${prevNode.id}')">◀ ${prevNode.name.zh.slice(0,8)}</button>` : '<span></span>'}
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
             ${(() => {
               const isStudied = Learn.progressMap?.[nodeId]?.studied;
               return isStudied
                 ? `<button class="btn btn-studied btn-sm" id="btnMarkStudied" disabled style="background:#22c55e;color:#fff;border-color:#22c55e;">✅ 已学习</button>`
                 : `<button class="btn btn-primary btn-sm" id="btnMarkStudied" onclick="window._learnMark('${nodeId}')">✅ 标记为已学习</button>`;
             })()}
-            <button class="btn btn-secondary btn-sm" onclick="window._nav('/practice?domain=${node.domain || ''}&node=${nodeId}&auto=1')">
-              ✏️ 做相关题目
-            </button>
+            <button class="btn btn-secondary btn-sm" onclick="window._nav('/practice?domain=${node.domain || ''}&node=${nodeId}&auto=1')">✏️ 做题</button>
           </div>
-          <div style="text-align:right;">
-            ${nextNode ? `<button class="btn btn-secondary btn-sm" onclick="window._learnSelect('${nextNode.id}')">${nextNode.name.zh} ▶</button>` : ''}
-          </div>
+          ${nextNode ? `<button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="window._learnSelect('${nextNode.id}')">${nextNode.name.zh.slice(0,8)} ▶</button>` : '<span></span>'}
         </div>
       </article>
     `;
@@ -545,16 +604,55 @@ const Learn = {
     if (content) {
       content.innerHTML = this._renderContent(nodeId);
     }
-    // 更新左侧树的高亮
+    // 左侧目录自动滚动到当前节点
+    setTimeout(() => {
+      const treeItem = document.querySelector(`.learn-tree-item[data-node-id="${nodeId}"]`);
+      if (treeItem) treeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+
+    // 记录上次学习位置（用于仪表盘继续学习）
+    localStorage.setItem('pmp_last_study_node', nodeId);
+    localStorage.setItem('pmp_last_study_time', Date.now());
+
+    // 更新树高亮
     document.querySelectorAll('.learn-tree-item').forEach(el => {
       el.classList.toggle('active', el.dataset.nodeId === nodeId);
     });
+    // 手机端：关闭浮层，更新标题
+    const overlay = document.getElementById('learnTreeOverlay');
+    if (overlay) overlay.style.display = 'none';
+    const title = document.getElementById('learnMobileTitle');
+    if (title) {
+      const node = getNodeById(nodeId);
+      if (node) title.textContent = node.name.zh;
+    }
 
-    // 自动记录学习行为（查看即记录）
     await this._autoTrackView(nodeId);
-
-    // 加载关联题目
     this._loadQuickCheck(nodeId);
+
+    // 更新侧边竖向阅读进度条
+    setTimeout(() => this._initScrollProgress(), 200);
+  },
+
+  /** 初始化侧边竖向阅读进度条（可重复调用，切换节点/首次进入均可用） */
+  _initScrollProgress() {
+    const el = document.getElementById('learnContent');
+    if (!el) return;
+    const fill = document.getElementById('learnScrollFill');
+    const track = document.getElementById('learnScrollTrack');
+    if (!fill) return;
+    const updateBar = () => {
+      const max = Math.max(1, el.scrollHeight - el.clientHeight);
+      const pct = Math.min(100, Math.round((el.scrollTop / max) * 100));
+      fill.style.height = pct + '%';
+      if (track) track.classList.toggle('is-active', pct > 0);
+      // 内容不足一屏时显示 100%（表示已读完）
+      if (el.scrollHeight <= el.clientHeight + 1) fill.style.height = '100%';
+    };
+    if (this._scrollHandler) el.removeEventListener('scroll', this._scrollHandler);
+    this._scrollHandler = updateBar;
+    el.addEventListener('scroll', updateBar, { passive: true });
+    updateBar();
   },
 
   /** 自动记录：打开知识点即标记为浏览过 */
@@ -684,7 +782,7 @@ const Learn = {
     const node = getNodeById(nodeId);
     bus.emit('node:studied', { nodeId, nodeName: node?.name?.zh, domain: node?.domain });
 
-    // 局部更新UI：按钮状态 + 树节点状态
+    // 局部更新UI：按钮状态 + 树节点状态 + 掌握度显示
     const btn = document.getElementById('btnMarkStudied');
     if (btn) {
       btn.textContent = '✅ 已学习';
@@ -693,6 +791,13 @@ const Learn = {
       btn.style.borderColor = '#22c55e';
       btn.disabled = true;
     }
+    // 更新掌握度显示
+    const label = document.getElementById('learnProgressLabel');
+    if (label) {
+      const m = this._calcMastery(this.progressMap[nodeId]);
+      label.textContent = m.label;
+      label.style.color = m.color;
+    }
     this._updateTreeDot(nodeId, true, existing?.correctRate ?? null);
   },
 };
@@ -700,6 +805,33 @@ const Learn = {
 // 全局函数
 window._learnSelect = (nodeId) => Learn.selectNode(nodeId);
 window._learnMark = (nodeId) => Learn.markStudied(nodeId);
+
+// 知识树搜索
+window._searchTree = (q) => {
+  const items = document.querySelectorAll('.learn-tree-item');
+  if (!q) {
+    items.forEach(el => { el.style.display = ''; el.parentElement.style.display = ''; });
+    document.querySelectorAll('.learn-section').forEach(s => s.style.display = '');
+    document.querySelectorAll('.learn-group').forEach(g => g.style.display = '');
+    return;
+  }
+  const kw = q.toLowerCase();
+  items.forEach(el => {
+    const name = (el.querySelector('.learn-tree-name')?.textContent || '').toLowerCase();
+    const match = name.includes(kw);
+    el.style.display = match ? '' : 'none';
+    // Show parent if child matches
+    if (match) {
+      let p = el.parentElement;
+      while (p) {
+        if (p.classList.contains('learn-group-children')) p.style.display = '';
+        if (p.classList.contains('learn-section')) p.style.display = '';
+        if (p.classList.contains('learn-group')) p.style.display = '';
+        p = p.parentElement;
+      }
+    }
+  });
+};
 
 // 即时检验答题
 window._learnQuizAnswer = async (questionId, selected, correct, el) => {

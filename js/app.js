@@ -95,10 +95,16 @@ async function init() {
     updateStatus('步骤 6/6: 启动应用...');
 
     AppState.ready = true;
-    console.log('✅ App ready —', getTotalKnowledgeUnits().total, '知识单元');
+    console.log('App ready -', getTotalKnowledgeUnits().total, 'knowledge units');
 
     // 7. 启动路由
     router.start();
+
+    // 8. 新手引导（首次访问）
+    const hasOnboarded = await db.getSetting('has_onboarded');
+    if (!hasOnboarded) {
+      setTimeout(() => showOnboarding(), 800);
+    }
 
     // 检查首次访问
     const visited = await db.getSetting('has_visited');
@@ -139,7 +145,12 @@ function setupSidebar() {
 function registerRoutes() {
   // 知识学习（新增）
   router.on('/learn', async () => {
-    const mod = await import('./learn.js');
+    const mod = await import('./learn.js?v=11');
+    return mod.default.render();
+  });
+
+  router.on('/settings', async () => {
+    const mod = await import('./settings.js');
     return mod.default.render();
   });
 
@@ -220,6 +231,46 @@ function registerRoutes() {
 export { AppState, db, router };
 export { KNOWLEDGE_NODES, getHierarchy, getTotalKnowledgeUnits, getNodeById, getChildren };
 export { toast, pct, progressColor, progressLabel, isMobile };
+
+// ===== 新手引导 =====
+function showOnboarding() {
+  const steps = [
+    { title: '欢迎使用 PMP 联动学习机！', desc: 'PMBOK第8版 · 2026新考纲 · 2694道真题', btn: '开始' },
+    { title: '📖 知识学习', desc: '76个知识单元，6大原则+7域+43过程，完整教材', btn: '下一步' },
+    { title: '✏️ 练习模式', desc: '按领域/随机/薄弱/智能推荐，练完即懂', btn: '下一步' },
+    { title: '🏆 模拟考试', desc: '185题×240分钟，2026新考纲，计时交卷', btn: '开始学习 🚀' },
+  ];
+
+  let currentStep = 0;
+  const overlay = document.getElementById('modalOverlay');
+  const content = document.getElementById('modalContent');
+
+  function showStep(i) {
+    if (i >= steps.length) {
+      overlay.style.display = 'none';
+      db.setSetting('has_onboarded', '1');
+      return;
+    }
+    currentStep = i;
+    const s = steps[i];
+    content.innerHTML = `
+      <div style="text-align:center;padding:32px 24px;">
+        <div style="font-size:48px;margin-bottom:16px;">${i === 0 ? '📚' : i === 1 ? '📖' : i === 2 ? '✏️' : '🏆'}</div>
+        <h2 style="margin-bottom:8px;">${s.title}</h2>
+        <p style="color:var(--color-text2);margin-bottom:16px;">${s.desc}</p>
+        <span style="font-size:11px;color:var(--color-text3);">${i + 1}/${steps.length}</span>
+        <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="window._onboardNext()">${s.btn}</button>
+        ${i > 0 ? '<button class="btn btn-secondary" style="width:100%;margin-top:6px;" onclick="window._onboardSkip()">跳过</button>' : ''}
+      </div>
+    `;
+    overlay.style.display = 'flex';
+  }
+
+  window._onboardNext = () => showStep(currentStep + 1);
+  window._onboardSkip = () => { overlay.style.display = 'none'; db.setSetting('has_onboarded', '1'); };
+
+  showStep(0);
+}
 
 // ===== 全局导航 =====
 window._nav = (path) => {

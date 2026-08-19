@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PMP联动学习机 — 技术总结报告</title>
+<style>
+  @page { size: A4; margin: 25mm 20mm; }
+  body { font-family: "PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif; color:#1a1a2e; line-height:1.8; font-size:14px; max-width:700px; margin:0 auto; padding:20px; }
+  .cover { text-align:center; padding:80px 0 40px; border-bottom:3px solid #22c55e; margin-bottom:40px; }
+  .cover h1 { font-size:28px; color:#22c55e; margin-bottom:12px; }
+  .cover .sub { font-size:16px; color:#64748b; }
+  .cover .date { font-size:12px; color:#94a3b8; margin-top:20px; }
+  h2 { font-size:20px; color:#22c55e; border-left:4px solid #22c55e; padding-left:12px; margin:32px 0 16px; }
+  h3 { font-size:16px; color:#1e293b; margin:20px 0 10px; }
+  table { width:100%; border-collapse:collapse; margin:12px 0 20px; font-size:13px; }
+  th { background:#22c55e; color:#fff; padding:10px 12px; text-align:left; font-weight:600; }
+  td { padding:8px 12px; border-bottom:1px solid #e2e8f0; }
+  tr:nth-child(even) td { background:#f8fafc; }
+  .highlight { background:#f0fdf4; padding:16px 20px; border-radius:8px; margin:16px 0; border-left:4px solid #22c55e; }
+  .problem { background:#fef2f2; padding:12px 16px; border-radius:6px; margin:10px 0; border-left:3px solid #ef4444; }
+  .solution { background:#f0fdf4; padding:12px 16px; border-radius:6px; margin:10px 0; border-left:3px solid #22c55e; }
+  code { background:#f1f5f9; padding:2px 6px; border-radius:3px; font-size:12px; }
+  .tagline { background:#22c55e; color:#fff; padding:16px 24px; border-radius:8px; text-align:center; font-size:15px; font-weight:600; margin:20px 0; }
+  .footer { text-align:center; font-size:11px; color:#94a3b8; margin-top:40px; padding-top:16px; border-top:1px solid #e2e8f0; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>PMP联动学习机</h1>
+  <div class="sub">技术架构 · 复杂问题 · 解决方案</div>
+  <div class="sub">完整技术总结报告</div>
+  <div class="date">2026年7月</div>
+</div>
+
+<h2>一、技术架构总览</h2>
+
+<h3>架构图</h3>
+<div class="highlight">
+<pre style="font-size:12px;line-height:1.6;">
+┌─────────────────────────────────────────┐
+│               前端 SPA (原生JS)           │
+│  index.html → app.js → router.js (Hash路由)│
+│                                          │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐   │
+│  │学习页│ │图谱页│ │练习页│ │考试页│   │
+│  │learn │ │graph │ │pract │ │exam  │   │
+│  └──────┘ └──────┘ └──────┘ └──────┘   │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐   │
+│  │错题本│ │术语  │ │报告  │ │设置  │   │
+│  │wrong │ │gloss │ │analyt│ │sett  │   │
+│  └──────┘ └──────┘ └──────┘ └──────┘   │
+│                                          │
+│  数据层: IndexedDB (Dexie.js)            │
+│  同步层: GitHub Gist API                  │
+│  部署: Python http.server / GitHub Pages  │
+└─────────────────────────────────────────┘
+</pre>
+</div>
+
+<h3>技术选型</h3>
+<table>
+<tr><th>层级</th><th>技术</th><th>选型原因</th></tr>
+<tr><td>前端框架</td><td>原生JS (ES Module)</td><td>零构建工具依赖，双击index.html即跑</td></tr>
+<tr><td>路由</td><td>Hash路由</td><td>兼容文件协议和任意静态服务器</td></tr>
+<tr><td>数据存储</td><td>IndexedDB (Dexie.js)</td><td>浏览器内置数据库，离线可用，无需后端</td></tr>
+<tr><td>可视化（桌面）</td><td>D3.js 力导向图</td><td>知识图谱拖拽/缩放/点击交互</td></tr>
+<tr><td>可视化（手机）</td><td>Canvas 2D 自绘</td><td>D3在移动端性能差，手写同心圆布局</td></tr>
+<tr><td>图表</td><td>Chart.js</td><td>学习报告雷达图和趋势图</td></tr>
+<tr><td>移动端</td><td>PWA + 响应式CSS</td><td>装到桌面像原生App，零额外开发</td></tr>
+<tr><td>部署</td><td>Python http.server + serveo/GitHub Pages</td><td>零服务器成本，全球CDN</td></tr>
+</table>
+
+<h2>二、关键复杂问题及解决</h2>
+
+<h3>问题1：CDN被墙 → 页面无限加载</h3>
+<div class="problem">
+<strong>现象</strong>：中国用户打开页面后一直显示"加载中"，无法进入应用。<br>
+<strong>根因</strong>：<code>unpkg.com</code> 和 <code>cdn.jsdelivr.net</code> 在国内DNS污染，Dexie.js、D3.js、Chart.js均无法加载。
+</div>
+<div class="solution">
+<strong>解决方案</strong>：将三个库通过npm安装后复制到 <code>js/vendor/</code> 目录，修改 <code>utils.js</code> 的 loadScript 函数优先本地加载，CDN仅作为兜底。
+</div>
+
+<h3>问题2：知识图谱手机端体验</h3>
+<table>
+<tr><th>版本</th><th>实现方式</th><th>问题</th></tr>
+<tr><td>v1</td><td>可折叠HTML树形菜单</td><td>只是跳转菜单，没有可视化</td></tr>
+<tr><td>v2</td><td>Canvas手写同心圆布局 + 触摸命中检测</td><td>点击事件this绑定丢失</td></tr>
+<tr><td>v3（最终）</td><td>闭包引用 + 4层圆环布局 + 进度着色</td><td>✅ 拖拽/缩放/点击/详情弹窗全部正常</td></tr>
+</table>
+<div class="solution">
+<strong>技术要点</strong>：用 <code>const self = TreeView</code> 闭包引用解决事件回调的this问题；用 <code>Math.hypot(x - n.x, y - n.y)</code> 做触摸命中检测；Canvas的 <code>devicePixelRatio</code> 缩放保证高清渲染。
+</div>
+
+<h3>问题3：题库数据质量（最耗时）</h3>
+<div class="problem">
+原始题库2800题存在严重质量问题：106题英文占比超过35%、题目中混入英文句子片段、题干包含"[单选题]分值:1分"垃圾前缀、668题缺答案解析。
+</div>
+<div class="solution">
+<strong>解决方案</strong>：编写Python清洗脚本，正则匹配删除英文长句（<code>[A-Za-z]{30,}</code>）、清除垃圾前缀、提取泄露在题干中的正确答案后删除、过滤英文过重题目。最终从2800题精简为2694道干净题目。
+</div>
+
+<h3>问题4：多设备同步（迭代最多）</h3>
+<table>
+<tr><th>尝试</th><th>方案</th><th>遇到问题</th><th>结果</th></tr>
+<tr><td>1</td><td>Node.js API + serveo双隧道</td><td>serveo URL频繁变化，隧道断开</td><td>❌</td></tr>
+<tr><td>2</td><td>手动导出JSON → 百度网盘</td><td>每换电脑需手动导入</td><td>❌ 太麻烦</td></tr>
+<tr><td>3</td><td>GitHub Gist API</td><td>Token缺少gist权限 → GitHub返回404</td><td>❌</td></tr>
+<tr><td>4（最终）</td><td>GitHub Gist API（重新生成Token勾选gist）</td><td>功能正确</td><td>✅</td></tr>
+</table>
+
+<div class="highlight">
+<strong>关键发现</strong>：GitHub API在Token权限不足时返回404而非401，极具误导性。<br>
+<strong>最终方案</strong>：手动创建Gist → 系统设置页填入Token和Gist ID → 点击同步 → 先Pull云端合并 → 再Push本地 → 页面刷新。
+</div>
+
+<h3>问题5：PWA Service Worker 缓存顽固</h3>
+<div class="problem">
+修改JS/CSS文件后用户看到的仍是旧版本，多次刷新无效。
+</div>
+<div class="solution">
+<strong>解决方案</strong>：在index.html中加入SW注销脚本（<code>getRegistrations().then(regs => regs.forEach(r => r.unregister()))</code>），同时增加HTML引用版本号 <code>js/app.js?v=m5</code> 强制绕过缓存。
+</div>
+
+<h2>三、工作量分布</h2>
+<table>
+<tr><th>模块</th><th>占比</th><th>核心难点</th></tr>
+<tr><td>知识学习（76节点完整教材）</td><td>20%</td><td>内容量大，需格式化展示+公式卡片+缩写标注</td></tr>
+<tr><td>题库清洗（2694题）</td><td>15%</td><td>乱码英文混入，需Python逐题正则清洗</td></tr>
+<tr><td>知识图谱（PC+手机两套）</td><td>15%</td><td>手机端从零手写Canvas力导向图</td></tr>
+<tr><td>多设备同步</td><td>20%</td><td>Token权限、隧道不稳定、反复调试4轮</td></tr>
+<tr><td>移动端适配（响应式+PWA）</td><td>10%</td><td>全页面CSS媒体查询+PWA Service Worker</td></tr>
+<tr><td>练习/考试/错题本/术语词典</td><td>20%</td><td>功能数量多但交互模式相似</td></tr>
+</table>
+
+<h2>四、经验教训</h2>
+<ol>
+  <li><strong>国内用户不能用海外CDN</strong> — 所有关键依赖必须本地化，CDN仅作兜底</li>
+  <li><strong>GitHub API错误信息不友好</strong> — 404可能是权限不够，不是资源不存在</li>
+  <li><strong>手机端可视化不能依赖D3</strong> — Canvas手写虽然麻烦但体验可控</li>
+  <li><strong>Service Worker是一把双刃剑</strong> — 开发阶段应禁用，上线后才启用</li>
+  <li><strong>题库质量是产品生命线</strong> — 2694题清洗投入了大量正则和人工时间，但这是核心价值所在</li>
+  <li><strong>Hash路由是纯静态应用的最佳选择</strong> — 无需服务器配合，直接文件访问也能路由</li>
+</ol>
+
+<div class="footer">PMP联动学习机 v2.0 · 技术总结报告 · 2026年7月</div>
+
+</body>
+</html>

@@ -21,8 +21,48 @@ const Dashboard = {
     const totalUnits = getTotalKnowledgeUnits();
     const overallProgress = this._calcOverallProgress(domainProgress);
 
+    // 上次学习位置
+    const lastNodeId = localStorage.getItem('pmp_last_study_node');
+    const lastNode = lastNodeId ? getNodeById(lastNodeId) : null;
+    const lastStudyTime = localStorage.getItem('pmp_last_study_time');
+    const lastTimeStr = lastStudyTime ? new Date(parseInt(lastStudyTime)).toLocaleString('zh-CN', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+
+    // 快捷入口排序（按使用频率）
+    const quickActions = [
+      { id: 'weakness', icon: '🎯', label: '薄弱点突击', path: '/practice?mode=weakness' },
+      { id: 'wrong-book', icon: '❌', label: '错题本', path: '/wrong-book' },
+      { id: 'exam', icon: '🏆', label: '模拟考试', path: '/exam' },
+      { id: 'glossary', icon: '📖', label: '术语词典', path: '/glossary' },
+      { id: 'graph', icon: '🕸️', label: '知识图谱', path: '/graph' },
+      { id: 'random', icon: '🎲', label: '随机练习', path: '/practice?mode=random' },
+    ];
+    // 根据错题数和考试次数调整优先级
+    if (studyStats.totalAttempts > 50) {
+      quickActions.sort((a, b) => {
+        if (a.id === 'wrong-book') return -1; // 有数据后错题本优先
+        if (b.id === 'wrong-book') return 1;
+        if (a.id === 'weakness') return -1; // 薄弱点优先
+        if (b.id === 'weakness') return 1;
+        return 0;
+      });
+    }
+
     return `
       <div class="dashboard">
+        <!-- 继续上次学习 -->
+        ${lastNode ? `
+        <div class="card" style="margin-bottom:16px;border-left:4px solid var(--color-primary);cursor:pointer;" onclick="window._nav('/learn?node=${lastNodeId}')">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:28px;">📖</span>
+            <div style="flex:1;">
+              <div style="font-size:13px;color:var(--color-text2);">${lastTimeStr ? '上次学习 · ' + lastTimeStr : '继续学习'}</div>
+              <div style="font-size:15px;font-weight:600;">${lastNode.name.zh}</div>
+            </div>
+            <span style="font-size:20px;">→</span>
+          </div>
+        </div>
+        ` : ''}
+
         <!-- 统计卡片 -->
         <div class="stats-grid" id="statsGrid">
           <div class="stat-card" style="animation-delay:0ms;">
@@ -61,8 +101,8 @@ const Dashboard = {
               <div style="font-size:11px;color:var(--color-text2);">随堂练习</div>
             </div>
             <div style="width:1px;height:30px;background:var(--color-border);"></div>
-            <div style="flex:1;font-size:12px;color:var(--color-text2);line-height:1.6;">
-              💡 学习进度来自<strong>知识学习</strong>页的浏览记录和手动标记，已掌握单元则综合了答题正确率。
+            <div style="font-size:12px;color:var(--color-text2);line-height:1.8;word-break:break-all;max-width:100%;">
+              💡 学习进度=知识学习浏览记录+手动标记<br>已掌握=答题正确率≥70%或手动标记完成
             </div>
           </div>
         </div>
@@ -92,30 +132,12 @@ const Dashboard = {
             <span class="card-title">🚀 快捷入口</span>
           </div>
           <div class="quick-actions">
-            <button class="quick-action-btn" onclick="window._nav('/practice?mode=weakness')">
-              <span class="action-icon">🎯</span>
-              <span>薄弱点突击</span>
-            </button>
-            <button class="quick-action-btn" onclick="window._nav('/wrong-book')">
-              <span class="action-icon">❌</span>
-              <span>错题本</span>
-            </button>
-            <button class="quick-action-btn" onclick="window._nav('/exam')">
-              <span class="action-icon">🏆</span>
-              <span>模拟考试</span>
-            </button>
-            <button class="quick-action-btn" onclick="window._nav('/glossary')">
-              <span class="action-icon">📖</span>
-              <span>术语词典</span>
-            </button>
-            <button class="quick-action-btn" onclick="window._nav('/graph')">
-              <span class="action-icon">🕸️</span>
-              <span>知识图谱</span>
-            </button>
-            <button class="quick-action-btn" onclick="window._nav('/practice?mode=random')">
-              <span class="action-icon">🎲</span>
-              <span>随机练习</span>
-            </button>
+            ${quickActions.map(q => `
+              <button class="quick-action-btn" onclick="window._nav('${q.path}')">
+                <span class="action-icon">${q.icon}</span>
+                <span>${q.label}</span>
+              </button>
+            `).join('')}
           </div>
         </div>
       </div>
@@ -368,10 +390,10 @@ const Dashboard = {
             <div style="padding:12px;background:var(--color-surface2);border-radius:8px;">
               <h4 style="font-size:13px;margin-bottom:8px;">📖 推荐知识点</h4>
               ${highPriority.length > 0 ? highPriority.map(n => `
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer;"
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer;gap:8px;"
                      onclick="window._nav('/learn?node=${n.id}')">
-                  <span style="font-size:13px;">⭐ ${n.name.zh}</span>
-                  <span style="font-size:11px;color:var(--color-primary);">学习 →</span>
+                  <span style="font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">⭐ ${n.name.zh}</span>
+                  <span style="font-size:11px;color:var(--color-primary);white-space:nowrap;flex-shrink:0;">学习→</span>
                 </div>
               `).join('') : '<p style="font-size:12px;color:var(--color-text3);">核心知识点已全部覆盖！</p>'}
             </div>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PMP联动学习机 — 商业演示报告</title>
+<style>
+  @page { size: A4; margin: 25mm 20mm; }
+  body { font-family: "PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif; color:#1a1a2e; line-height:1.8; font-size:14px; max-width:700px; margin:0 auto; padding:20px; }
+  .cover { text-align:center; padding:80px 0 40px; border-bottom:3px solid #6366f1; margin-bottom:40px; }
+  .cover h1 { font-size:28px; color:#6366f1; margin-bottom:12px; }
+  .cover .sub { font-size:16px; color:#64748b; }
+  .cover .date { font-size:12px; color:#94a3b8; margin-top:20px; }
+  h2 { font-size:20px; color:#6366f1; border-left:4px solid #6366f1; padding-left:12px; margin:32px 0 16px; }
+  h3 { font-size:16px; color:#1e293b; margin:20px 0 10px; }
+  table { width:100%; border-collapse:collapse; margin:12px 0 20px; font-size:13px; }
+  th { background:#6366f1; color:#fff; padding:10px 12px; text-align:left; font-weight:600; }
+  td { padding:8px 12px; border-bottom:1px solid #e2e8f0; }
+  tr:nth-child(even) td { background:#f8fafc; }
+  .highlight { background:linear-gradient(135deg,#eef2ff,#e0e7ff); padding:16px 20px; border-radius:8px; margin:16px 0; }
+  ol { padding-left:20px; }
+  ol li { margin:6px 0; }
+  .tagline { background:#6366f1; color:#fff; padding:16px 24px; border-radius:8px; text-align:center; font-size:15px; font-weight:600; margin:20px 0; }
+  .footer { text-align:center; font-size:11px; color:#94a3b8; margin-top:40px; padding-top:16px; border-top:1px solid #e2e8f0; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>PMP联动学习机</h1>
+  <div class="sub">基于PMBOK第8版 · 2026新考纲智能备考工具</div>
+  <div class="sub">知识图谱 × 情景应用 双引擎联动学习</div>
+  <div class="date">2026年7月 · 商业演示报告</div>
+</div>
+
+<h2>一、产品定位</h2>
+<div class="tagline">"基于PMBOK第8版、针对2026年新考纲的智能PMP备考工具，知识图谱+情景题目双引擎联动学习"</div>
+
+<h2>二、目标用户</h2>
+<table>
+<tr><th>用户群</th><th>核心痛点</th></tr>
+<tr><td>PMP备考者</td><td>教材太厚（1000+页）、知识点零散、做题和学理论脱节</td></tr>
+<tr><td>企业内部培训</td><td>缺乏统一的在线学习平台，培训效果难以量化</td></tr>
+<tr><td>培训机构</td><td>题库管理混乱、学员进度追踪困难</td></tr>
+</table>
+
+<h2>三、核心功能</h2>
+<ol>
+  <li><strong>知识图谱</strong> — 76个知识点可视化关联，4层同心圆布局，点击节点直接跳学习</li>
+  <li><strong>知识学习</strong> — 6大原则+7绩效域+5关注领域+43过程+15敏捷概念，完整PMBOK第8版教材</li>
+  <li><strong>联动刷题</strong> — 学完即练，题目关联知识点，薄弱点自动突击，难度筛选，自动跳题</li>
+  <li><strong>模拟考试</strong> — 185题×240分钟，答题卡导航，倒计时，完全模拟2026新考纲</li>
+  <li><strong>学习报告</strong> — 7大领域正确率雷达图、连续学习天数、正确率趋势分析</li>
+  <li><strong>术语词典</strong> — 42个核心缩写速查，含EVM系列公式卡片和数字算例</li>
+  <li><strong>错题本</strong> — 自动收集正确率低于70%的题目，按领域分组重练</li>
+  <li><strong>多设备同步</strong> — PC和手机共用同一账号，进度通过GitHub Gist实时云端同步</li>
+</ol>
+
+<h2>四、核心数据</h2>
+<table>
+<tr><th>维度</th><th>数据</th></tr>
+<tr><td>题库规模</td><td><strong>2,694道</strong>中英文PMP真题</td></tr>
+<tr><td>知识覆盖</td><td><strong>76个</strong>PMBOK第8版知识节点，覆盖考纲100%</td></tr>
+<tr><td>考纲时效</td><td>针对<strong>2026年12月</strong>新考纲（185题/240分钟/33%-41%-26%配比）</td></tr>
+<tr><td>多端支持</td><td>PC+手机PWA，装到桌面像原生App</td></tr>
+<tr><td>成本</td><td><strong>0元</strong>（全程开源技术栈，零服务器成本）</td></tr>
+</table>
+
+<h2>五、竞品对比</h2>
+<table>
+<tr><th>能力</th><th>PMP联动学习机</th><th>传统刷题App</th><th>培训班</th></tr>
+<tr><td>知识+题目联动</td><td>✅ 自动关联</td><td>❌ 分离</td><td>⚠️ 部分</td></tr>
+<tr><td>可视化知识图谱</td><td>✅ 交互式</td><td>❌ 无</td><td>❌ 无</td></tr>
+<tr><td>薄弱点智能突击</td><td>✅ 自动识别</td><td>⚠️ 手动筛选</td><td>❌ 无</td></tr>
+<tr><td>新考纲适配</td><td>✅ 185题/240分钟</td><td>❌ 旧180题</td><td>⚠️ 滞后</td></tr>
+<tr><td>费用</td><td><strong>免费</strong></td><td>¥200-500</td><td>¥3,000-8,000</td></tr>
+</table>
+
+<h2>六、演示流程（5分钟）</h2>
+<ol>
+  <li><strong>仪表盘</strong> → 展示学习数据概览、三本书进度环、今日推荐</li>
+  <li><strong>知识图谱</strong> → 拖拽缩放、点击节点看详情</li>
+  <li><strong>知识学习 → 做题</strong> → 学完「监控项目绩效」→ 点「做相关题目」自动联动</li>
+  <li><strong>模拟考试</strong> → 答题卡导航、倒计时、交卷评分</li>
+  <li><strong>术语词典</strong> → 搜索EVM → 看公式卡片+数字算例</li>
+  <li><strong>多设备</strong> → 手机打开同一地址 → 显示移动版布局</li>
+</ol>
+
+<h2>七、商业化路径</h2>
+<table>
+<tr><th>阶段</th><th>产品形态</th><th>商业模式</th></tr>
+<tr><td>1. 个人版</td><td>免费开源，PC+手机PWA</td><td>积累用户口碑</td></tr>
+<tr><td>2. 机构版</td><td>多用户管理后台、学员进度报表、自定义题库</td><td>按机构年费</td></tr>
+<tr><td>3. 增值服务</td><td>考前冲刺包、1v1答疑、直播串讲</td><td>按服务收费</td></tr>
+</table>
+
+<div class="footer">PMP联动学习机 v2.0 · PMBOK第8版 · 2026新考纲</div>
+
+</body>
+</html>

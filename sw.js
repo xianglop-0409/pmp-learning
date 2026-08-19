@@ -1,9 +1,12 @@
-// Service Worker — 离线缓存
-const CACHE_NAME = 'pmp-learning-v2';
+// Service Worker — 离线缓存 v6
+const CACHE_NAME = 'pmp-learning-v6';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
+  './manifest.json',
+  './img/icon.svg',
+  // Core JS
   './js/app.js',
   './js/router.js',
   './js/db.js',
@@ -11,8 +14,9 @@ const ASSETS = [
   './js/event-bus.js',
   './js/knowledge-graph.js',
   './js/knowledge-content.js',
-  './js/learn.js',
+  // Pages
   './js/dashboard.js',
+  './js/learn.js',
   './js/graph-view.js',
   './js/tree-view.js',
   './js/questions.js',
@@ -20,54 +24,65 @@ const ASSETS = [
   './js/exam.js',
   './js/analytics.js',
   './js/glossary.js',
+  './js/wrong-book.js',
+  './js/settings.js',
+  // Components
   './js/formula-cards.js',
-  './manifest.json',
-];
-
-// CDN 资源（需要网络，不缓存或按需缓存）
-const CDN_ASSETS = [
-  'https://cdn.jsdelivr.net/npm/d3@7',
-  'https://cdn.jsdelivr.net/npm/dexie@4',
-  'https://cdn.jsdelivr.net/npm/chart.js@4',
+  // Vendor (local)
+  './js/vendor/dexie.min.js',
+  './js/vendor/d3.min.js',
+  './js/vendor/chart.umd.min.js',
+  // Data
+  './data/all-bank.json',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
+    self.skipWaiting().then(() => {
+      return caches.open(CACHE_NAME).then((cache) => {
+        console.log('[SW] Caching', ASSETS.length, 'assets');
+        return cache.addAll(ASSETS).catch(err => {
+          console.warn('[SW] Some assets failed to cache:', err);
+        });
+      });
     })
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  // CDN 资源：网络优先
-  if (event.request.url.includes('cdn.jsdelivr.net')) {
-    event.respondWith(
-      caches.match(event.request).then((cached) => {
-        return fetch(event.request).then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          return response;
-        }).catch(() => cached || new Response('CDN不可用'));
-      })
-    );
-    return;
-  }
-
-  // 本地资源：缓存优先
+  // 本地资源：网络优先，缓存兜底（保证内容更新即时生效）
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
+    fetch(event.request).then((response) => {
+      if (response.ok && event.request.method === 'GET') {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      }
+      return response;
+    }).catch(() => {
+      // 离线：回退缓存
+      return caches.match(event.request).then((cached) => {
+        return cached || new Response('Offline', { status: 503 });
+      });
     })
   );
 });
 
 self.addEventListener('activate', (event) => {
+  // 立即接管所有页面 + 清理旧缓存
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      );
+    self.clients.claim().then(() => {
+      return caches.keys().then((keys) => {
+        return Promise.all(
+          keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        );
+      });
     })
   );
+});
+
+self.addEventListener('message', (event) => {
+  // 收到"强制更新"消息时跳过等待并刷新页面
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });

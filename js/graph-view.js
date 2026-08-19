@@ -24,6 +24,8 @@ const GraphView = {
           <span style="font-weight:600;">🕸️ 知识图谱</span>
           <span style="font-size:12px;color:var(--color-text3);">6原则 → 7域 → 5关注领域 → 43过程 · 共76节点</span>
           <span style="flex:1;"></span>
+          <input id="graphSearch" type="text" placeholder="🔍 搜索节点名称..." oninput="window._gSearch(this.value)"
+            style="padding:6px 12px;border-radius:16px;border:1px solid var(--color-border);font-size:12px;width:180px;outline:none;">
           <span style="font-size:11px;color:var(--color-text2);">💡 拖拽节点 | 滚轮缩放 | 点击展开详情</span>
           <button class="btn btn-sm btn-secondary" onclick="window._gReset()">重置视图</button>
         </div>
@@ -362,6 +364,24 @@ const GraphView = {
 
     sidebar.classList.add('open');
   },
+};
+
+// 全局搜索
+window._gSearch = (q) => {
+  if (!q) {
+    // 恢复所有节点
+    d3.selectAll('g > g').style('opacity', 1);
+    d3.selectAll('line').style('opacity', d => d.type === 'parent' ? 0.5 : 0.2);
+    return;
+  }
+  const kw = q.toLowerCase();
+  d3.selectAll('g > g').style('opacity', d => {
+    return (d.name.zh || '').includes(kw) || (d.name.en || '').toLowerCase().includes(kw) ? 1 : 0.1;
+  });
+  d3.selectAll('line').style('opacity', d => {
+    const s = d.source; const t = d.target;
+    return (s.name.zh || '').includes(kw) || (t.name.zh || '').includes(kw) || (s.name.en || '').toLowerCase().includes(kw) || (t.name.en || '').toLowerCase().includes(kw) ? 0.8 : 0.05;
+  });
 };
 
 // 全局重置

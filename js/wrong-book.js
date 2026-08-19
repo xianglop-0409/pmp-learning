@@ -103,12 +103,13 @@ const WrongBook = {
 
   _renderList(list) {
     return list.map(w => `
-      <div class="card wrong-item" style="margin-bottom:10px;padding:14px 16px;" data-domain="${w.domain}" data-diff="${w.difficulty}">
+      <div class="card wrong-item" style="margin-bottom:10px;padding:14px 16px;border-left:4px solid ${w.correctRate < 40 ? 'var(--color-danger)' : 'var(--color-warning)'};" data-domain="${w.domain}" data-diff="${w.difficulty}">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
           <span class="tag tag-blue">${domainMap[w.domain] || w.domain}</span>
           <span style="font-size:12px;color:var(--color-text3);">${'⭐'.repeat(w.difficulty)}</span>
           <span style="font-weight:600;color:${progressColor(w.correctRate)};">正确率 ${w.correctRate}%</span>
           <span style="font-size:11px;color:var(--color-text3);">答题${w.attempts}次</span>
+          <span style="font-size:11px;color:var(--color-danger);font-weight:600;">错${w.attempts - (w.correct||0)}次</span>
           <span style="flex:1;"></span>
           <button class="btn btn-primary btn-sm" onclick="window._wbRetryOne('${w.questionId}')">🔄 重做</button>
         </div>

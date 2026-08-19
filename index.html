@@ -17,7 +17,7 @@
     document.documentElement.setAttribute('data-theme', 'light');
   </script>
   <!-- Styles -->
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=m20260723">
 
   <!-- Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
@@ -32,7 +32,9 @@
       <span></span><span></span><span></span>
     </button>
     <h1 class="app-title">PMP 联动学习机</h1>
-    <span class="topbar-subtitle">PMBOK® 第8版</span>
+    <span class="topbar-subtitle">PMBOK 第8版</span>
+    <span style="flex:1;"></span>
+    <button class="btn btn-sm btn-secondary" onclick="window._nav('/settings')" style="font-size:12px;" id="topLoginBtn">🔄 同步</button>
   </header>
 
   <!-- ===== 侧边栏导航（桌面端） ===== -->
@@ -70,6 +72,9 @@
       <li><a href="#/glossary" class="nav-item" data-route="/glossary">
         <span class="nav-icon">📖</span>术语词典
       </a></li>
+      <li><a href="#/settings" class="nav-item" data-route="/settings">
+        <span class="nav-icon">⚙️</span>系统设置
+      </a></li>
     </ul>
     <div class="sidebar-footer">
       <span class="version">v1.0 · PMBOK 8th</span>
@@ -102,6 +107,9 @@
     <a href="#/glossary" class="tab-item" data-route="/glossary">
       <span class="tab-icon">📖</span><span class="tab-label">术语</span>
     </a>
+    <a href="#/settings" class="tab-item" data-route="/settings">
+      <span class="tab-icon">⚙️</span><span class="tab-label">设置</span>
+    </a>
   </nav>
 
   <!-- ===== 主内容区 ===== -->
@@ -123,6 +131,14 @@
   </div>
 
   <!-- ===== App Scripts ===== -->
-  <script type="module" src="js/app.js?v=20260720"></script>
+  <script>
+    // 注销所有旧SW
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.unregister());
+      });
+    }
+  </script>
+  <script type="module" src="js/app.js?v=m7"></script>
 </body>
 </html>

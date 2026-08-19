@@ -288,43 +288,29 @@ const Questions = {
         <div class="card-header">
           <span class="card-title">📝 题库管理</span>
           <span class="card-subtitle">${this.allQuestions.length} 道题目</span>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-primary btn-sm" onclick="window._qAdd()">+ 添加题目</button>
-            <button class="btn btn-secondary btn-sm" onclick="window._qImport()">📥 导入JSON</button>
-            <button class="btn btn-secondary btn-sm" onclick="window._qExport()">📤 导出JSON</button>
-          </div>
+        </div>
+        <div style="padding:0 16px 8px;">
+          <button class="btn btn-primary btn-sm" onclick="window._qAdd()" style="width:100%;">+ 添加题目</button>
+          <button class="btn btn-secondary btn-sm" onclick="window._qReloadBank()" style="width:100%;margin-top:6px;">🔄 重新加载题库 (${this.allQuestions.length < 100 ? '当前仅'+this.allQuestions.length+'题，点此加载全部' : '已加载'+this.allQuestions.length+'题'})</button>
         </div>
 
         <!-- 筛选工具栏 -->
-        <div class="toolbar">
-          <select class="select" id="qFilterDomain" onchange="window._qFilter()" style="width:140px;">
-            <option value="">全部领域</option>
-            <option value="governance">治理</option>
-            <option value="scope">范围</option>
-            <option value="schedule">进度</option>
-            <option value="finance">财务</option>
-            <option value="stakeholder">利益相关方</option>
-            <option value="resource">资源</option>
-            <option value="risk">风险</option>
-            <option value="agile">敏捷</option>
-          </select>
-          <select class="select" id="qFilterFocus" onchange="window._qFilter()" style="width:120px;">
-            <option value="">全部过程组</option>
-            <option value="initiating">启动</option>
-            <option value="planning">规划</option>
-            <option value="executing">执行</option>
-            <option value="monitoring">监控</option>
-            <option value="closing">收尾</option>
-          </select>
-          <select class="select" id="qFilterDiff" onchange="window._qFilter()" style="width:120px;">
-            <option value="">全部难度</option>
-            <option value="1">⭐ 简单</option>
-            <option value="2">⭐⭐ 中等</option>
-            <option value="3">⭐⭐⭐ 较难</option>
-            <option value="4">⭐⭐⭐⭐ 困难</option>
-            <option value="5">⭐⭐⭐⭐⭐ 极难</option>
-          </select>
-          <input class="input" id="qFilterSearch" placeholder="搜索题目..." oninput="window._qFilter()" style="width:200px;">
+        <div style="padding:8px 16px;border-bottom:1px solid var(--color-border);">
+          <input class="input" id="qFilterSearch" placeholder="搜索题目关键词..." oninput="window._qFilter()" style="width:100%;padding:8px 12px;border-radius:4px;border:1px solid var(--color-border);font-size:14px;margin-bottom:6px;">
+          <div class="toolbar" style="display:flex;gap:6px;">
+            <select id="qFilterDomain" onchange="window._qFilter()" style="flex:1;padding:4px 6px;border-radius:4px;border:1px solid var(--color-border);font-size:12px;">
+              <option value="">全部领域</option>
+              <option value="governance">治理</option><option value="scope">范围</option><option value="schedule">进度</option><option value="finance">财务</option><option value="stakeholder">干系人</option><option value="resource">资源</option><option value="risk">风险</option><option value="agile">敏捷</option>
+            </select>
+            <select id="qFilterFocus" onchange="window._qFilter()" style="flex:1;padding:4px 6px;border-radius:4px;border:1px solid var(--color-border);font-size:12px;">
+              <option value="">全部阶段</option>
+              <option value="initiating">启动</option><option value="planning">规划</option><option value="executing">执行</option><option value="monitoring">监控</option><option value="closing">收尾</option>
+            </select>
+            <select id="qFilterDiff" onchange="window._qFilter()" style="flex:1;padding:4px 6px;border-radius:4px;border:1px solid var(--color-border);font-size:12px;">
+              <option value="">难度</option>
+              <option value="1">⭐</option><option value="2">⭐⭐</option><option value="3">⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="5">⭐⭐⭐⭐⭐</option>
+            </select>
+          </div>
         </div>
 
         <!-- 题目列表 -->
@@ -368,20 +354,21 @@ const Questions = {
     const domainMap = { governance: '治理', scope: '范围', schedule: '进度', finance: '财务', stakeholder: '利益相关方', resource: '资源', risk: '风险', agile: '敏捷' };
     const diffStars = { 1: '⭐', 2: '⭐⭐', 3: '⭐⭐⭐', 4: '⭐⭐⭐⭐', 5: '⭐⭐⭐⭐⭐' };
 
-    return this.filteredQuestions.slice(0, 100).map((q, i) => `
-      <div class="question-list-item">
-        <div class="ql-num">${i + 1}</div>
-        <div class="ql-text" title="${escapeHtml(q.scenario?.zh || q.question?.zh || '')}">
-          ${escapeHtml((q.scenario?.zh || q.question?.zh || '').slice(0, 80))}${(q.scenario?.zh || '').length > 80 ? '...' : ''}
+    return this.filteredQuestions.slice(0, 200).map((q, i) => `
+      <div class="question-list-item" style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-bottom:1px solid var(--color-border);">
+        <span style="font-weight:700;color:var(--color-primary);min-width:24px;flex-shrink:0;">${i+1}</span>
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:13px;line-height:1.5;word-break:break-all;">${escapeHtml(q.question?.zh || q.scenario?.zh || '无题目')}</p>
+          <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
+            <span class="tag tag-blue" style="font-size:10px;">${domainMap[q.domain]||q.domain}</span>
+            <span style="font-size:10px;color:var(--color-text3);">${diffStars[q.difficulty]||''}</span>
+          </div>
         </div>
-        <span class="tag tag-blue">${domainMap[q.domain] || q.domain}</span>
-        <span style="font-size:11px;color:var(--color-text3);">${diffStars[q.difficulty] || ''}</span>
-        <div class="ql-actions">
-          <button class="btn btn-sm btn-secondary" onclick="window._qPreview('${q.id}')">查看</button>
-          <button class="btn btn-sm btn-secondary" onclick="window._qDelete('${q.id}')">🗑</button>
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+          <button class="btn btn-sm btn-secondary" onclick="window._qPreview('${q.id}')" style="font-size:11px;padding:4px 8px;">查看</button>
         </div>
       </div>
-    `).join('') + (this.filteredQuestions.length > 100 ? `<p style="text-align:center;color:var(--color-text3);margin-top:8px;">仅显示前100条，请使用筛选缩小范围</p>` : '');
+    `).join('') + (this.filteredQuestions.length > 200 ? `<p style="text-align:center;color:var(--color-text3);padding:12px;">仅显示前200条，${this.filteredQuestions.length}条匹配中请用搜索筛选</p>` : '');
   },
 };
 
@@ -403,7 +390,10 @@ window._qAdd = () => {
   const focusNames = ['启动','规划','执行','监控','收尾'];
 
   showModal(`
-    <h3 style="margin-bottom:16px;">添加新题目</h3>
+    <div style="position:relative;">
+      <button onclick="document.getElementById('modalOverlay').style.display='none'" style="position:absolute;top:0;right:0;width:32px;height:32px;border:none;background:var(--color-surface2);border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      <h3 style="margin-bottom:16px;">添加新题目</h3>
+    </div>
     <div class="form-group">
       <label class="form-label">情景描述</label>
       <textarea class="textarea" id="qAddScenario" placeholder="描述项目背景和具体情况..." rows="3"></textarea>
@@ -563,6 +553,22 @@ window._qExport = async () => {
   a.click();
   URL.revokeObjectURL(url);
   toast('题库已导出 ✅', 'success');
+};
+
+window._qReloadBank = async () => {
+  toast('正在下载题库...', 'info');
+  try {
+    const resp = await fetch('./data/all-bank.json');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const bank = await resp.json();
+    toast('已下载' + bank.length + '题，导入中...', 'info');
+    await db.setSetting('bank_version', '6');
+    await db.reloadAllQuestions(bank);
+    toast('已加载 ' + bank.length + ' 道题目!', 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch(e) {
+    toast('加载失败: ' + e.message, 'error');
+  }
 };
 
 export default Questions;

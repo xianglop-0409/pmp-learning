@@ -1,4 +1,5 @@
 // ===== IndexedDB 数据层 (Dexie.js) =====
+import Sync from './sync.js';
 
 const DB_NAME = 'pmp_learning_db';
 const DB_VERSION = 4;
@@ -40,17 +41,23 @@ class Database {
       await this.setSetting('preset_questions_loaded', '1');
     }
 
-    // 导入外部题库（清洗后2800题）
-    const bankLoaded = await this.getSetting('bank_v5_clean');
-    if (!bankLoaded) {
-      console.log('Importing cleaned question bank (2800 questions)...');
+    // 导入外部题库（强制每次启动都检查）
+    const bankVersion = 9; // v9: AI逐题精标，补全domain/principle节点
+    const bankLoaded = await this.getSetting('bank_version');
+    if (parseInt(bankLoaded || '0') < bankVersion) {
+      console.log('Importing question bank...');
       try {
         const resp = await fetch('./data/all-bank.json');
         if (resp.ok) {
           const bank = await resp.json();
-          await this.db.customQuestions.bulkPut(bank);
-          await this.setSetting('bank_v5_clean', '1');
-          console.log('✅ Imported ' + bank.length + ' questions');
+          await this.db.customQuestions.clear();
+          // batch import
+          const batchSize = 500;
+          for (let i = 0; i < bank.length; i += batchSize) {
+            await this.db.customQuestions.bulkPut(bank.slice(i, i + batchSize));
+          }
+          await this.setSetting('bank_version', String(bankVersion));
+          console.log('Imported ' + bank.length + ' questions (v' + bankVersion + ')');
         }
       } catch (e) {
         console.warn('Bank import failed:', e.message);
@@ -59,6 +66,10 @@ class Database {
 
     this.ready = true;
     console.log('Database ready');
+
+    // 云同步：启动时拉取云端数据合并到本地（异步，不阻塞）
+    this._syncFromCloud().catch(e => console.warn('[DB] sync pull failed:', e.message));
+
     return this;
   }
 
@@ -73,18 +84,23 @@ class Database {
 
   async updateNodeProgress(nodeId, data) {
     const existing = await this.db.nodeProgress.get(nodeId);
+    let result;
     if (existing) {
-      return this.db.nodeProgress.update(nodeId, {
+      result = await this.db.nodeProgress.update(nodeId, {
         ...data,
         updatedAt: new Date().toISOString(),
       });
     } else {
-      return this.db.nodeProgress.put({
+      result = await this.db.nodeProgress.put({
         nodeId,
         ...data,
         updatedAt: new Date().toISOString(),
       });
     }
+    // 云同步（异步，不阻塞 UI）
+    const full = await this.db.nodeProgress.get(nodeId);
+    Sync.push('nodeProgress', nodeId, full);
+    return result;
   }
 
   // ===== 答题记录 =====
@@ -98,18 +114,23 @@ class Database {
 
   async updateQuestionProgress(questionId, data) {
     const existing = await this.db.questionProgress.get(questionId);
+    let result;
     if (existing) {
-      return this.db.questionProgress.update(questionId, {
+      result = await this.db.questionProgress.update(questionId, {
         ...data,
         updatedAt: new Date().toISOString(),
       });
     } else {
-      return this.db.questionProgress.put({
+      result = await this.db.questionProgress.put({
         questionId,
         ...data,
         updatedAt: new Date().toISOString(),
       });
     }
+    // 云同步
+    const full = await this.db.questionProgress.get(questionId);
+    Sync.push('questionProgress', questionId, full);
+    return result;
   }
 
   async getStarredQuestions() {
@@ -128,7 +149,10 @@ class Database {
 
   // ===== 考试记录 =====
   async saveExamSession(session) {
-    return this.db.examSessions.put(session);
+    const result = await this.db.examSessions.put(session);
+    // 云同步
+    Sync.push('examSessions', session.id, session);
+    return result;
   }
 
   async getExamSessions() {
@@ -159,6 +183,14 @@ class Database {
 
   async deleteCustomQuestion(id) {
     return this.db.customQuestions.delete(id);
+  }
+
+  async reloadAllQuestions(bank) {
+    await this.db.customQuestions.clear();
+    const batchSize = 500;
+    for (let i = 0; i < bank.length; i += batchSize) {
+      await this.db.customQuestions.bulkPut(bank.slice(i, i + batchSize));
+    }
   }
 
   // ===== 预设题目 =====
@@ -248,6 +280,42 @@ class Database {
       }
     }
     return streak;
+  }
+
+  /** 云同步：从 Supabase 拉取并合并到本地（last-write-wins） */
+  async _syncFromCloud() {
+    if (!Sync.loadConfig()) return;
+
+    const cloud = await Sync.pullAll();
+
+    // 合并 nodeProgress
+    for (const rec of (cloud.nodeProgress || [])) {
+      const remote = rec.data || {};
+      const local = await this.db.nodeProgress.get(rec.row_key);
+      if (!local || !local.updatedAt || !remote.updatedAt || remote.updatedAt >= local.updatedAt) {
+        await this.db.nodeProgress.put({ ...remote, nodeId: rec.row_key });
+      }
+    }
+
+    // 合并 questionProgress
+    for (const rec of (cloud.questionProgress || [])) {
+      const remote = rec.data || {};
+      const local = await this.db.questionProgress.get(rec.row_key);
+      if (!local || !local.updatedAt || !remote.updatedAt || remote.updatedAt >= local.updatedAt) {
+        await this.db.questionProgress.put({ ...remote, questionId: rec.row_key });
+      }
+    }
+
+    // 合并 examSessions（考试记录只增不减）
+    for (const rec of (cloud.examSessions || [])) {
+      const remote = rec.data || {};
+      const local = await this.db.examSessions.get(rec.row_key);
+      if (!local) {
+        await this.db.examSessions.put({ ...remote, id: rec.row_key });
+      }
+    }
+
+    console.log('[DB] sync merged:', cloud.nodeProgress.length, cloud.questionProgress.length, cloud.examSessions.length);
   }
 }
 

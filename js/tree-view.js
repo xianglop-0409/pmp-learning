@@ -1,129 +1,257 @@
-// ===== 树形层级视图（手机端知识图谱） =====
-// Phase 2 实现
-
-import { getHierarchy, getNodeById, getChildren } from './knowledge-graph.js';
-import { progressColor, pct } from './utils.js';
+// ===== 知识图谱·移动端交互式Canvas力导向图 =====
+import { getHierarchy, getNodeById, getChildren, getRelatedNodes } from './knowledge-graph.js';
+import db from './db.js';
+import { progressColor, toast } from './utils.js';
 import router from './router.js';
 
 const TreeView = {
-  targetNodeId: null,
+  nodes: [], links: [], targetNodeId: null,
+  simRunning: false, canvas: null, ctx: null,
+  selectedNode: null, transform: { x: 0, y: 0, s: 1 },
+  dragging: false, lastTouch: null,
 
   async render() {
-    // 读取路由参数
     const query = router.getQuery();
     this.targetNodeId = query.node || null;
 
-    const { principles, domains, focusAreas, processes, agileConcepts } = getHierarchy();
+    // Build graph data
+    const { principles, domains, focusAreas, processes } = getHierarchy();
+    this.nodes = []; this.links = [];
+
+    const addNode = (n, group) => {
+      this.nodes.push({ id: n.id, name: n.name, type: n.type, group, parentId: n.parentId, domain: n.domain, correctRate: null });
+    };
+    principles.forEach(n => addNode(n, 'principle'));
+    domains.forEach(n => addNode(n, 'domain'));
+    focusAreas.forEach(n => addNode(n, 'focus_area'));
+    processes.forEach(n => addNode(n, 'process'));
+
+    // Build links
+    this.nodes.forEach(n => {
+      if (n.parentId && this.nodes.find(x => x.id === n.parentId)) {
+        this.links.push({ source: n.parentId, target: n.id });
+      }
+    });
+
+    // Load progress
+    const allProgress = await db.getAllQuestionProgress();
+    this.nodes.forEach(n => {
+      const prog = allProgress.filter(p => p.domain === n.domain);
+      const total = prog.reduce((s, p) => s + (p.attempts || 0), 0);
+      const correct = prog.reduce((s, p) => s + (p.correct || 0), 0);
+      n.correctRate = total > 0 ? Math.round((correct / total) * 100) : null;
+    });
+
+    this.transform = { x: 0, y: 0, s: 1 };
+    this.selectedNode = null;
 
     return `
-      <div class="card" style="margin-bottom:16px;">
-        <span style="font-weight:600;">🕸️ 知识图谱 · 树形视图</span>
-        <span style="font-size:12px;color:var(--color-text3);margin-left:8px;">${getTotalUnits()}个节点</span>
-        ${this.targetNodeId ? `<span style="font-size:12px;color:var(--color-primary);margin-left:8px;">🎯 已定位到指定节点</span>` : ''}
+      <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
+        <span style="font-weight:600;">🕸️ 知识图谱</span>
+        <span style="font-size:11px;color:var(--color-text3);">${this.nodes.length}节点</span>
+        <span style="flex:1;"></span>
+        <button class="btn btn-sm btn-secondary" onclick="window._tvReset()">重置</button>
       </div>
-      <div class="tree-view" id="treeView">
-        <h4 style="margin:12px 0 8px;color:var(--color-primary);">📌 项目管理原则</h4>
-        ${principles.map(p => this._renderNode(p, 0)).join('')}
-
-        <h4 style="margin:12px 0 8px;color:var(--color-success);">📂 绩效域</h4>
-        ${domains.map(d => this._renderNode(d, 0)).join('')}
-
-        <h4 style="margin:12px 0 8px;color:var(--color-warning);">🎯 关注领域（过程组）</h4>
-        ${focusAreas.map(f => this._renderNode(f, 0)).join('')}
-
-        <h4 style="margin:12px 0 8px;color:var(--color-info);">🔄 敏捷概念</h4>
-        ${agileConcepts.map(a => this._renderNode(a, 0)).join('')}
-      </div>
+      <canvas id="tvCanvas" style="width:100%;height:calc(100vh - 280px);background:var(--color-surface);border-radius:8px;border:1px solid var(--color-border);touch-action:none;"></canvas>
+      <div id="tvDetail" style="margin-top:8px;min-height:60px;"></div>
     `;
   },
 
-  /** 渲染后调用：滚动到目标节点 */
   afterRender() {
-    if (!this.targetNodeId) return;
-    // 延迟等 DOM 渲染完毕
-    setTimeout(() => {
-      // 展开所有上级节点
-      this._expandAncestors(this.targetNodeId);
-      // 滚动到目标节点
-      const targetEl = document.querySelector(`.tree-node[data-id="${this.targetNodeId}"]`);
-      if (targetEl) {
-        targetEl.classList.add('tree-highlight');
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // 高亮效果
-        targetEl.style.background = 'var(--color-primary-bg)';
-        targetEl.style.borderLeft = '3px solid var(--color-primary)';
-        targetEl.style.paddingLeft = '8px';
-        targetEl.style.borderRadius = '4px';
-      }
-    }, 300);
+    try {
+      this.canvas = document.getElementById('tvCanvas');
+      if (!this.canvas) return;
+      this.ctx = this.canvas.getContext('2d');
+
+      const dpr = window.devicePixelRatio || 1;
+      const resize = () => {
+        try {
+          const rect = this.canvas.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return;
+          this.canvas.width = rect.width * dpr;
+          this.canvas.height = rect.height * dpr;
+          this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          this._layout(rect.width, rect.height);
+          this._draw();
+        } catch(e) { console.warn('TV resize error:', e.message); }
+      };
+    const self = TreeView;
+    resize();
+    window.addEventListener('resize', () => setTimeout(resize, 200));
+
+    // Touch/Mouse events - use self (TreeView object) for stable 'this' reference
+    this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); self._onDown(e); }, { passive: false });
+    this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); self._onMove(e); }, { passive: false });
+    this.canvas.addEventListener('touchend', (e) => { self._onUp(e); });
+    this.canvas.addEventListener('mousedown', (e) => { self._onDown(e); });
+    this.canvas.addEventListener('mousemove', (e) => { self._onMove(e); });
+    this.canvas.addEventListener('mouseup', (e) => { self._onUp(e); });
+    this.canvas.addEventListener('click', (e) => { self._onClick(e); });
+    this.canvas.addEventListener('wheel', (e) => { e.preventDefault(); self._onZoom(e); }, { passive: false });
+    } catch(e) { console.warn('TV init error:', e.message); }
   },
 
-  /** 递归展开所有祖先节点 */
-  _expandAncestors(nodeId) {
-    const node = getNodeById(nodeId);
-    if (!node) return;
-    if (node.parentId) {
-      this._expandAncestors(node.parentId);
-    }
-    // 展开当前节点的父容器
-    const parentNode = node.parentId ? getNodeById(node.parentId) : null;
-    if (parentNode) {
-      const parentEl = document.querySelector(`.tree-node[data-id="${parentNode.id}"]`);
-      if (parentEl && !parentEl.classList.contains('expanded')) {
-        parentEl.classList.add('expanded');
+  _layout(w, h) {
+    const cx = w / 2, cy = h / 2;
+    const groups = { principle: [], domain: [], focus_area: [], process: [] };
+    this.nodes.forEach(n => groups[n.group]?.push(n));
+
+    // Arrange in concentric rings
+    const rings = [
+      { key: 'principle', r: Math.min(w, h) * 0.15, count: groups.principle.length },
+      { key: 'domain', r: Math.min(w, h) * 0.30, count: groups.domain.length },
+      { key: 'focus_area', r: Math.min(w, h) * 0.45, count: groups.focus_area.length },
+      { key: 'process', r: Math.min(w, h) * 0.60, count: groups.process.length },
+    ];
+
+    rings.forEach(ring => {
+      const items = groups[ring.key];
+      items.forEach((n, i) => {
+        const angle = (2 * Math.PI * i / ring.count) - Math.PI / 2;
+        n.x = cx + ring.r * Math.cos(angle);
+        n.y = cy + ring.r * Math.sin(angle);
+        n.radius = ring.key === 'process' ? 10 : ring.key === 'domain' ? 20 : 14;
+      });
+    });
+  },
+
+  _draw() {
+    const { ctx, canvas, nodes, links, transform } = this;
+    const w = canvas.width / devicePixelRatio, h = canvas.height / devicePixelRatio;
+    ctx.clearRect(0, 0, w, h);
+
+    ctx.save();
+    ctx.translate(transform.x, transform.y);
+    ctx.scale(transform.s, transform.s);
+
+    // Draw links
+    links.forEach(l => {
+      const s = nodes.find(n => n.id === l.source);
+      const t = nodes.find(n => n.id === l.target);
+      if (!s || !t) return;
+      const isSelected = this.selectedNode && (s.id === this.selectedNode.id || t.id === this.selectedNode.id);
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y);
+      ctx.strokeStyle = isSelected ? '#6366f1' : 'rgba(148,163,184,0.3)';
+      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.stroke();
+    });
+
+    // Draw nodes
+    const colorMap = { principle: '#f59e0b', domain: '#6366f1', focus_area: '#22c55e', process: '#3b82f6' };
+    nodes.forEach(n => {
+      const r = n.radius || 10;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      const fillColor = n.correctRate === null ? '#cbd5e1' : progressColor(n.correctRate);
+      ctx.fillStyle = this.selectedNode?.id === n.id ? colorMap[n.group] : fillColor;
+      ctx.fill();
+      ctx.strokeStyle = colorMap[n.group];
+      ctx.lineWidth = this.selectedNode?.id === n.id ? 3 : 1;
+      ctx.stroke();
+
+      // Label (on outer ring only)
+      if (n.group !== 'process') {
+        ctx.fillStyle = '#64748b';
+        ctx.font = `${n.group === 'domain' ? 11 : 9}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(n.name.zh.slice(0, n.group === 'domain' ? 4 : 6), n.x, n.y + r + 12);
       }
+    });
+
+    ctx.restore();
+
+    // Legend
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('🟢已掌握 🟡学习中 🔴薄弱 ⚪未开始', 8, h - 8);
+    ctx.fillText('💡原则 📂域 🎯关注 ⚙️过程', 8, h - 22);
+  },
+
+  _findNode(ex, ey) {
+    const { transform } = this;
+    const x = (ex - transform.x) / transform.s;
+    const y = (ey - transform.y) / transform.s;
+    for (let i = this.nodes.length - 1; i >= 0; i--) {
+      const n = this.nodes[i];
+      const r = (n.radius || 10) + 4;
+      if (Math.hypot(x - n.x, y - n.y) < r) return n;
     }
-    // 如果当前节点有子节点，也展开它自己
-    const el = document.querySelector(`.tree-node[data-id="${nodeId}"]`);
-    if (el && getChildren(nodeId).length > 0 && !el.classList.contains('expanded')) {
-      el.classList.add('expanded');
+    return null;
+  },
+
+  _onDown(e) {
+    e.preventDefault();
+    const p = e.touches ? e.touches[0] : e;
+    this.dragging = true;
+    this.lastTouch = { x: p.clientX, y: p.clientY, tx: this.transform.x, ty: this.transform.y };
+  },
+
+  _onMove(e) {
+    if (!this.dragging) return;
+    const p = e.touches ? e.touches[0] : e;
+    if (this.lastTouch) {
+      this.transform.x = this.lastTouch.tx + (p.clientX - this.lastTouch.x);
+      this.transform.y = this.lastTouch.ty + (p.clientY - this.lastTouch.y);
+      this._draw();
     }
   },
 
-  _renderNode(node, depth) {
-    const children = getChildren(node.id);
-    const hasChildren = children.length > 0;
-    const isTarget = this.targetNodeId === node.id;
-    const nodeClass = hasChildren ? 'tree-node' : 'tree-node';
+  _onUp(e) { this.dragging = false; this.lastTouch = null; },
 
-    return `
-      <div class="${nodeClass}${isTarget ? ' tree-highlight' : ''}" data-id="${node.id}">
-        <div class="tree-node-header" onclick="window._treeToggle('${node.id}')" ondblclick="window._treeNodeDbClick('${node.id}')" style="padding-left:${12 + depth * 16}px;cursor:pointer;" title="单击展开 · 双击跳转学习页">
-          <span class="tree-node-icon">${this._typeIcon(node.type)}</span>
-          <span class="tree-node-name" style="${isTarget ? 'font-weight:700;color:var(--color-primary);' : ''}">${node.name.zh}${isTarget ? ' 🎯' : ''}</span>
-          <span class="tree-node-status" style="background:${progressColor(node.correctRate || 0)};"></span>
-          <span style="color:var(--color-text3);font-size:10px;">${node.type === 'process' ? node.focusArea : ''}</span>
+  _onClick(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const node = this._findNode(e.clientX - rect.left, e.clientY - rect.top);
+    if (node) {
+      this.selectedNode = node;
+      this._showDetail(node);
+      this._draw();
+    } else {
+      this.selectedNode = null;
+      document.getElementById('tvDetail').innerHTML = '<p style="text-align:center;color:var(--color-text3);font-size:12px;">👆 点击节点查看详情 · 拖拽平移 · 双指缩放</p>';
+      this._draw();
+    }
+  },
+
+  _onZoom(e) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    this.transform.s = Math.max(0.3, Math.min(3, this.transform.s * delta));
+    this._draw();
+  },
+
+  _showDetail(node) {
+    const detail = document.getElementById('tvDetail');
+    if (!detail) return;
+    const data = getNodeById(node.id);
+    if (!data) return;
+
+    const typeMap = { principle: '原则', domain: '绩效域', focus_area: '关注领域', process: '过程' };
+    const info = data.description?.zh?.slice(0, 100) || data.examTips?.zh?.slice(0, 100) || '';
+
+    detail.innerHTML = `
+      <div class="card" style="padding:14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span class="tag tag-blue">${typeMap[node.group] || node.group}</span>
+          <strong>${node.name.zh}</strong>
+          ${node.correctRate !== null ? `<span style="color:${progressColor(node.correctRate)};font-weight:600;">${node.correctRate}%</span>` : '<span style="color:#94a3b8;">未开始</span>'}
         </div>
-        ${hasChildren ? `<div class="tree-children">${children.map(c => this._renderNode(c, depth + 1)).join('')}</div>` : ''}
+        ${info ? `<p style="font-size:12px;color:var(--color-text2);line-height:1.6;">${info}...</p>` : ''}
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-primary btn-sm" onclick="window._nav('/learn?node=${node.id}')">📖 学习</button>
+          <button class="btn btn-secondary btn-sm" onclick="window._nav('/practice?domain=${node.domain||''}&node=${node.id}&auto=1')">✏️ 练习</button>
+        </div>
       </div>
     `;
-  },
-
-  _typeIcon(type) {
-    const icons = { principle: '💡', domain: '📂', focus_area: '🎯', process: '⚙️', agile_concept: '🔄' };
-    return icons[type] || '📄';
-  },
-};
-
-function getTotalUnits() {
-  const { principles, domains, focusAreas, processes, agileConcepts } = getHierarchy();
-  return principles.length + domains.length + focusAreas.length + processes.length + agileConcepts.length;
-}
-
-window._treeToggle = (id) => {
-  const el = document.querySelector(`.tree-node[data-id="${id}"]`);
-  if (el) {
-    el.classList.toggle('expanded');
-    // 高亮当前节点
-    document.querySelectorAll('.tree-node-header').forEach(h => h.style.background = '');
-    const header = el.querySelector('.tree-node-header');
-    if (header) header.style.background = 'var(--color-primary-bg)';
   }
 };
 
-// 双击跳转到学习页
-window._treeNodeDbClick = (id) => {
-  window._nav('/learn?node=' + id);
+window._tvReset = () => {
+  TreeView.transform = { x: 0, y: 0, s: 1 };
+  TreeView.selectedNode = null;
+  TreeView._draw();
+  document.getElementById('tvDetail').innerHTML = '<p style="text-align:center;color:var(--color-text3);font-size:12px;">👆 点击节点查看详情 · 拖拽平移 · 双指缩放</p>';
 };
 
 export default TreeView;

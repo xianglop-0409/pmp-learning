@@ -644,7 +644,7 @@ const Glossary = {
           ${hasRelated ? `
             <div class="glossary-related">
               <span class="related-label">🔗 关联术语：</span>
-              ${term.related.map(r => `<span class="related-tag" onclick="window._gJumpTerm('${r.replace(/'/g, "\\'")}')">${r}</span>`).join('')}
+              ${term.related.map(r => `<span class="related-tag" onclick="event.stopPropagation();window._gJumpTerm('${r.replace(/'/g, "\\'")}')">${r}</span>`).join('')}
             </div>
           ` : ''}
           ${term.knowledgeNode ? `
